@@ -55,12 +55,12 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 	return newNode
 }
 
-// IncomingLinks returns set of incoming links. Be carefull: it returns SLICE
+// IncomingLinks returns set of incoming links. Warning: it outputs slice
 func (node *Node) IncomingLinks() []gmns.LinkID {
 	return node.incomingLinks
 }
 
-// OutcomingLinks returns set of outcoming links. Be carefull: it returns SLICE
+// OutcomingLinks returns set of outcoming links. Warning: it outputs slice
 func (node *Node) OutcomingLinks() []gmns.LinkID {
 	return node.outcomingLinks
 }
