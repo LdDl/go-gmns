@@ -70,7 +70,7 @@ func (node *Node) Name() string {
 	return node.name
 }
 
-// OSMNode returns identifier corresponding to OSM data
+// OSMNode returns node identifier corresponding to OSM data
 func (node *Node) OSMNode() osm.NodeID {
 	return node.osmNodeID
 }
@@ -181,8 +181,8 @@ func WithPOI(poiID gmns.PoiID) func(*Node) {
 	}
 }
 
-// WithControlType sets control type for the node
-func WithControlType(controlType types.ControlType) func(*Node) {
+// WithNodeControlType sets control type for the node
+func WithNodeControlType(controlType types.ControlType) func(*Node) {
 	return func(node *Node) {
 		node.controlType = controlType
 	}
