@@ -6,7 +6,8 @@ It is just implementation of Golang structure of basic data in GMNS
 ### Current status
 - [ ] [**W.I.P**] Macroscopic network
     - [ ] Links
-    - [ ] Nodes
+    - [x] Lanes Information
+    - [x] Nodes
     - [ ] Net
     - [ ] GeoJSON
 - [ ] [**W.I.P**] Movements
