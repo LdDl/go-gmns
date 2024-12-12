@@ -70,22 +70,27 @@ func (node *Node) Name() string {
 	return node.name
 }
 
-// OSMNode returns node identifier corresponding to OSM data
+// OSMHighway returns highway tag for corresponding node in OSM data
+func (node *Node) OSMHighway() string {
+	return node.osmHighway
+}
+
+// OSMNode returns node identifier corresponding to OSM data. Outputs "-1" if it was not set.
 func (node *Node) OSMNode() osm.NodeID {
 	return node.osmNodeID
 }
 
-// Intersection returns intersection identifier. Outputs "-1" in case if no data.
+// Intersection returns intersection identifier. Outputs "-1" if it was not set.
 func (node *Node) Intersection() int {
 	return node.intersectionID
 }
 
-// Zone returns zone identifier
+// Zone returns zone identifier. Outputs "-1" if it was not set.
 func (node *Node) Zone() gmns.NodeID {
 	return node.zoneID
 }
 
-// POI returns POI identifier
+// POI returns POI identifier. Outputs "-1" if it was not set.
 func (node *Node) POI() gmns.PoiID {
 	return node.poiID
 }
@@ -146,8 +151,8 @@ func WithNodeName(name string) func(*Node) {
 	}
 }
 
-// WithOSMHighwayName sets highway information from the OSM data for the node
-func WithOSMHighwayName(osmHighway string) func(*Node) {
+// WithOSMHighwayTag sets highway information from the OSM data for the node
+func WithOSMHighwayTag(osmHighway string) func(*Node) {
 	return func(node *Node) {
 		node.osmHighway = osmHighway
 	}

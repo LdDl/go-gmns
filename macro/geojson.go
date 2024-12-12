@@ -6,6 +6,7 @@ import (
 	"github.com/paulmach/orb/geojson"
 )
 
+// GeoFeature returns GeoJSON LineString feature for the given link
 func (link *Link) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(link.Geom())
 	f.ID = link.ID
@@ -35,6 +36,20 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	return f
 }
 
-func (node *Node) GeoFeature() geojson.Feature {
-	return geojson.Feature{}
+// GeoFeature returns GeoJSON Point feature for the given node
+func (node *Node) GeoFeature() *geojson.Feature {
+	f := geojson.NewFeature(node.Geom())
+	f.ID = node.ID
+	f.Properties["id"] = node.ID
+	f.Properties["osm_node_id"] = node.OSMNode()
+	f.Properties["control_type"] = node.ControlType().String()
+	f.Properties["boundary_type"] = node.BoundaryType().String()
+	f.Properties["activity_type"] = node.ActivityType().String()
+	f.Properties["activity_link_type"] = node.ActivityLinkType().String()
+	f.Properties["zone_id"] = node.Zone()
+	f.Properties["intersection_id"] = node.Intersection()
+	f.Properties["poi_id"] = node.POI()
+	f.Properties["osm_highway"] = node.OSMHighway()
+	f.Properties["name"] = node.Name()
+	return f
 }
