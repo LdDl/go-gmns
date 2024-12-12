@@ -8,8 +8,8 @@ import (
 )
 
 type Link struct {
-	lanesInfo LanesInfo
-
+	lanesInfo          LanesInfo
+	name               string
 	geom               orb.LineString
 	geomEuclidean      orb.LineString
 	allowedAgentTypes  []types.AgentType
@@ -29,6 +29,36 @@ type Link struct {
 	linkConnectionType types.LinkConnectionType
 	controlType        types.ControlType
 	wasBidirectional   bool
+}
+
+func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
+	newLink := &Link{
+		lanesInfo:          LanesInfo{},
+		name:               "",
+		geom:               orb.LineString{},
+		geomEuclidean:      orb.LineString{},
+		allowedAgentTypes:  []types.AgentType{},
+		lengthMeters:       -1,
+		freeSpeed:          -1,
+		maxSpeed:           -1,
+		ID:                 id,
+		sourceNodeID:       sourceNodeID,
+		targetNodeID:       targetNodeID,
+		osmWayID:           osm.WayID(-1),
+		sourceOsmNodeID:    osm.NodeID(-1),
+		targetOsmNodeID:    osm.NodeID(-1),
+		lanesNum:           -1,
+		capacity:           -1,
+		linkClass:          types.LINK_CLASS_UNDEFINED,
+		linkType:           types.LINK_UNDEFINED,
+		linkConnectionType: types.NOT_A_LINK,
+		controlType:        types.CONTROL_TYPE_NOT_SIGNAL,
+		wasBidirectional:   false,
+	}
+	for _, option := range options {
+		option(newLink)
+	}
+	return newLink
 }
 
 // MaxLanes returns max number of lanes on the link. This method is not strictly corresponds to any of the struct field i.e. it is not just getter.
@@ -72,7 +102,12 @@ func (link *Link) GetOutcomingLaneIndices() []int {
 	return laneIndices(link.lanesNum, lanesInfo.LanesChange[idx][0], lanesInfo.LanesChange[idx][1])
 }
 
-// LanesInfo just returns copy of the lanes information object
+// Name returns link alias.
+func (link *Link) Name() string {
+	return link.name
+}
+
+// LanesInfo just returns copy of the lanes information object.
 func (link *Link) LanesInfo() LanesInfo {
 	return link.lanesInfo
 }
@@ -92,32 +127,32 @@ func (link *Link) AllowedAgentTypes() []types.AgentType {
 	return link.allowedAgentTypes
 }
 
-// LengthMeters returns length of the underlying geometry [WGS84]
+// LengthMeters returns length of the underlying geometry [WGS84]. Outputs "-1" if it was not set.
 func (link *Link) LengthMeters() float64 {
 	return link.lengthMeters
 }
 
-// FreeSpeed returns free flow speed for the link
+// FreeSpeed returns free flow speed for the link. Outputs "-1" if it was not set.
 func (link *Link) FreeSpeed() float64 {
 	return link.freeSpeed
 }
 
-// MaxSpeed returns speed restriction the link
+// MaxSpeed returns speed restriction the link. Outputs "-1" if it was not set.
 func (link *Link) MaxSpeed() float64 {
 	return link.maxSpeed
 }
 
-// OSMWay returns link identifier corresponding to OSM data
+// OSMWay returns link identifier corresponding to OSM data. Outputs "-1" if it was not set.
 func (link *Link) OSMWay() osm.WayID {
 	return link.osmWayID
 }
 
-// SourceNode returns identifier of source node
+// SourceNode returns identifier of source node. Outputs "-1" if it was not set.
 func (link *Link) SourceNode() gmns.NodeID {
 	return link.sourceNodeID
 }
 
-// TargetNode returns identifier of target node
+// TargetNode returns identifier of target node. Outputs "-1" if it was not set.
 func (link *Link) TargetNode() gmns.NodeID {
 	return link.targetNodeID
 }
@@ -132,12 +167,12 @@ func (link *Link) TargetOSMNode() osm.NodeID {
 	return link.targetOsmNodeID
 }
 
-// LanesNum returns number of lanes
+// LanesNum returns number of lanes. Outputs "-1" if it was not set.
 func (link *Link) LanesNum() int {
 	return link.lanesNum
 }
 
-// Capacity returns max capacity of the link
+// Capacity returns max capacity of the link. Outputs "-1" if it was not set.
 func (link *Link) Capacity() int {
 	return link.capacity
 }
@@ -165,6 +200,13 @@ func (link *Link) ControlType() types.ControlType {
 // WasBidirectional returns whether if the link was bidirectional
 func (link *Link) WasBidirectional() bool {
 	return link.wasBidirectional
+}
+
+// WithLinkName sets alias for the link
+func WithLinkName(name string) func(*Link) {
+	return func(link *Link) {
+		link.name = name
+	}
 }
 
 // WithLanesInfo sets information about lanes for the link
