@@ -2,6 +2,7 @@ package types
 
 import "strings"
 
+// HighwayType is just type alias for the highway type (inherited from OSM)
 type HighwayType uint16
 
 const (
@@ -30,8 +31,10 @@ const (
 	HIGHWAY_TRAFFIC_SIGNALS
 )
 
+var highwayTypeStr = []string{"undefined", "motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "residential", "residential_link", "living_street", "service", "services", "cycleway", "footway", "pedestrian", "steps", "track", "unclassified", "traffic_signals"}
+
 func (iotaIdx HighwayType) String() string {
-	return [...]string{"undefined", "motorway", "motorway_link", "trunk", "trunk_link", "primary", "primary_link", "secondary", "secondary_link", "tertiary", "tertiary_link", "residential", "residential_link", "living_street", "service", "services", "cycleway", "footway", "pedestrian", "steps", "track", "unclassified", "traffic_signals"}[iotaIdx]
+	return highwayTypeStr[iotaIdx]
 }
 
 func NewHighwayTypeFrom(str string) HighwayType {

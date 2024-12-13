@@ -1,5 +1,6 @@
 package types
 
+// NetworkType is just type alias for the network type
 type NetworkType uint16
 
 const (
@@ -11,8 +12,10 @@ const (
 	NETWORK_AEROWAY
 )
 
+var networkTypeStr = []string{"undefined", "auto", "bike", "walk", "railway", "aeroway"}
+
 func (iotaIdx NetworkType) String() string {
-	return [...]string{"undefined", "auto", "bike", "walk", "railway", "aeroway"}[iotaIdx]
+	return networkTypeStr[iotaIdx]
 }
 
 var (

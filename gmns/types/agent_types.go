@@ -1,5 +1,6 @@
 package types
 
+// AgentType is just type alias for the agent type
 type AgentType uint16
 
 const (
@@ -9,8 +10,10 @@ const (
 	AGENT_WALK
 )
 
+var agentTypeStr = []string{"undefined", "auto", "bike", "walk"}
+
 func (iotaIdx AgentType) String() string {
-	return [...]string{"undefined", "auto", "bike", "walk"}[iotaIdx]
+	return agentTypeStr[iotaIdx]
 }
 
 var (

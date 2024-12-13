@@ -1,5 +1,6 @@
 package types
 
+// LinkConnectionType is just type alias for the link connection type
 type LinkConnectionType uint16
 
 const (
@@ -9,6 +10,8 @@ const (
 	IS_LINK
 )
 
+var linkConnectionTypeStr = []string{"no", "yes"}
+
 func (iotaIdx LinkConnectionType) String() string {
-	return [...]string{"no", "yes"}[iotaIdx]
+	return linkConnectionTypeStr[iotaIdx]
 }

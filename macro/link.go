@@ -7,6 +7,7 @@ import (
 	"github.com/paulmach/osm"
 )
 
+// Link representation of an edge in a macroscopic graph
 type Link struct {
 	lanesInfo          LanesInfo
 	name               string
@@ -31,6 +32,7 @@ type Link struct {
 	wasBidirectional   bool
 }
 
+// NewLinkFrom creates pointer to the new Link
 func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
 	newLink := &Link{
 		lanesInfo:          LanesInfo{},

@@ -1,5 +1,6 @@
 package types
 
+// LinkType is just type alias for the link type
 type LinkType uint16
 
 const (
@@ -21,8 +22,10 @@ const (
 	LINK_AEROWAY
 )
 
+var linkTypeStr = []string{"undefined", "motorway", "trunk", "primary", "secondary", "tertiary", "residential", "living_street", "service", "cycleway", "footway", "track", "unclassified", "connector", "railway", "aeroway"}
+
 func (iotaIdx LinkType) String() string {
-	return [...]string{"undefined", "motorway", "trunk", "primary", "secondary", "tertiary", "residential", "living_street", "service", "cycleway", "footway", "track", "unclassified", "connector", "railway", "aeroway"}[iotaIdx]
+	return linkTypeStr[iotaIdx]
 }
 
 type linkComposition struct {

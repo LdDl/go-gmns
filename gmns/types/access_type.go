@@ -1,5 +1,6 @@
 package types
 
+// AccessType is just type alias for the access type
 type AccessType uint16
 
 const (
@@ -13,6 +14,8 @@ const (
 	ACCESS_FOOT
 )
 
+var accessTypeStr = []string{"undefined", "highway", "motor_vehicle", "motorcar", "access", "service", "bicycle", "foot"}
+
 func (iotaIdx AccessType) String() string {
-	return [...]string{"undefined", "highway", "motor_vehicle", "motorcar", "access", "service", "bicycle", "foot"}[iotaIdx]
+	return accessTypeStr[iotaIdx]
 }

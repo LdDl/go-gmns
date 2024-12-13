@@ -1,5 +1,6 @@
 package types
 
+// BoundaryType is just type alias for the boundary type
 type BoundaryType uint16
 
 const (
@@ -9,6 +10,8 @@ const (
 	BOUNDARY_INCOME_OUTCOME
 )
 
+var boundaryTypeStr = []string{"none", "income_only", "outcome_only", "income_outcome"}
+
 func (iotaIdx BoundaryType) String() string {
-	return [...]string{"none", "income_only", "outcome_only", "income_outcome"}[iotaIdx]
+	return boundaryTypeStr[iotaIdx]
 }

@@ -1,5 +1,6 @@
 package types
 
+// ControlType is just type alias for the control type
 type ControlType uint16
 
 const (
@@ -7,6 +8,8 @@ const (
 	CONTROL_TYPE_IS_SIGNAL
 )
 
+var controlTypeStr = []string{"common", "signal"}
+
 func (iotaIdx ControlType) String() string {
-	return [...]string{"common", "signal"}[iotaIdx]
+	return controlTypeStr[iotaIdx]
 }

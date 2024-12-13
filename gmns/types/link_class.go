@@ -1,5 +1,6 @@
 package types
 
+// LinkClass is just type alias for the link class
 type LinkClass uint16
 
 const (
@@ -9,6 +10,8 @@ const (
 	LINK_CLASS_AEROWAY
 )
 
+var linkClassStr = []string{"undefined", "highway", "railway", "aeroway"}
+
 func (iotaIdx LinkClass) String() string {
-	return [...]string{"undefined", "highway", "railway", "aeroway"}[iotaIdx]
+	return linkClassStr[iotaIdx]
 }

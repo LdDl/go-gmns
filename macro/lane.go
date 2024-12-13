@@ -6,15 +6,18 @@ import (
 
 const (
 	resolution = 5.0
+	// Default lane width
 	LANE_WIDTH = 3.5
 )
 
+// LanesInfo is information about lanes for the specific link
 type LanesInfo struct {
 	LanesList         []int
 	LanesChange       [][2]int
 	LanesChangePoints []float64
 }
 
+// NewLanesInfo creates pointer to the new LanesInfo
 func NewLanesInfo(link *Link) LanesInfo {
 	lanesInfo := LanesInfo{
 		LanesList:         make([]int, 0),

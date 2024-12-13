@@ -7,6 +7,7 @@ import (
 	"github.com/paulmach/osm"
 )
 
+// Node representation of a vertex in a macroscopic graph
 type Node struct {
 	incomingLinks  []gmns.LinkID
 	outcomingLinks []gmns.LinkID
@@ -30,6 +31,7 @@ type Node struct {
 	isCentroid bool
 }
 
+// NewLinkFrom creates pointer to the new Node
 func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 	newNode := &Node{
 		incomingLinks:    make([]gmns.LinkID, 0),
