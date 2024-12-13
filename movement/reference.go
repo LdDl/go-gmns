@@ -25,6 +25,7 @@ var (
 	}
 )
 
+// MovementType is just type alias for the movement type
 type MovementType uint16
 
 const (
@@ -39,6 +40,7 @@ func (iotaIdx MovementType) String() string {
 	return movementsTypes[iotaIdx]
 }
 
+// MovementShortType is just type alias for the movement type in shorten form
 type MovementShortType uint16
 
 const (
@@ -53,6 +55,7 @@ func (iotaIdx MovementShortType) String() string {
 	return movementsShortTypes[iotaIdx]
 }
 
+// DirectionType is just type alias for the direction of a movement (it does distinct from DirectionType in package "macro")
 type DirectionType uint16
 
 const (
@@ -67,6 +70,7 @@ func (iotaIdx DirectionType) String() string {
 	return directionTypes[iotaIdx]
 }
 
+// MovementCompositeType is just type alias for the composite movement type (combined direction and movement types)
 type MovementCompositeType uint16
 
 const (

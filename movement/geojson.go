@@ -21,8 +21,8 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f.Properties["out_lane_start"] = mvmt.OutcomeLaneStart()
 	f.Properties["out_lane_end"] = mvmt.OutcomeLaneEnd()
 	f.Properties["lanes_num"] = mvmt.LanesNum()
-	f.Properties["from_osm_node_id"] = mvmt.OSMNodeFrom()
-	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTo()
+	f.Properties["from_osm_node_id"] = mvmt.OSMNodeSource()
+	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTarget()
 	f.Properties["type"] = mvmt.Type()
 	f.Properties["penalty"] = -1  // @todo: future works
 	f.Properties["capacity"] = -1 // @todo: future works

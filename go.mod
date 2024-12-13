@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/paulmach/orb v0.11.1
 	github.com/paulmach/osm v0.8.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 )
 
