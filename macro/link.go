@@ -218,14 +218,14 @@ func WithLanesInfo(lanesInfo LanesInfo) func(*Link) {
 	}
 }
 
-// WithLineGeom sets geometry [WGS84] for the link
+// WithLineGeom sets geometry [WGS84] for the link. Warning: it does not copy the given slice.
 func WithLineGeom(geom orb.LineString) func(*Link) {
 	return func(link *Link) {
 		link.geom = geom
 	}
 }
 
-// WithLineGeomEuclidean sets geometry [Euclidean] for the link
+// WithLineGeomEuclidean sets geometry [Euclidean] for the link. Warning: it does not copy the given slice.
 func WithLineGeomEuclidean(geomEuclidean orb.LineString) func(*Link) {
 	return func(link *Link) {
 		link.geomEuclidean = geomEuclidean

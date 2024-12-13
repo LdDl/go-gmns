@@ -67,7 +67,7 @@ func (movement *Movement) MacroNode() gmns.NodeID {
 	return movement.macroNodeID
 }
 
-// IncomeMacroLink returns incoming macro link. Outputs "-1" if it was not set.
+// IncomeMacroLink returns income macro link. Outputs "-1" if it was not set.
 func (movement *Movement) IncomeMacroLink() gmns.LinkID {
 	return movement.incomeMacroLinkID
 }
@@ -92,7 +92,7 @@ func (movement *Movement) IncomeLaneEnd() int {
 	return movement.incomeLaneEnd
 }
 
-// OutcomeMacroLink returns outcoming macro link. Outputs "-1" if it was not set.
+// OutcomeMacroLink returns outcome macro link. Outputs "-1" if it was not set.
 func (movement *Movement) OutcomeMacroLink() gmns.LinkID {
 	return movement.outcomeMacroLinkID
 }
@@ -150,4 +150,159 @@ func (movement *Movement) ControlType() types.ControlType {
 // LanesNum returns number of lanes. Outputs "-1" if it was not set.
 func (movement *Movement) LanesNum() int {
 	return movement.lanesNum
+}
+
+// WithLinkName sets alias for the movement
+func WithName(name string) func(*Movement) {
+	return func(m *Movement) {
+		m.name = name
+	}
+}
+
+// WithGeom sets geometry [WGS84] for the link. Warning: it does not copy the given slice.
+func WithGeom(geom orb.LineString) func(*Movement) {
+	return func(movement *Movement) {
+		movement.geom = geom
+	}
+}
+
+// WithLineGeomEuclidean sets geometry [Euclidean] for the link. Warning: it does not copy the given slice.
+func WithGeomEuclidean(geomEuclidean orb.LineString) func(*Movement) {
+	return func(movement *Movement) {
+		movement.geomEuclidean = geomEuclidean
+	}
+}
+
+// WithAllowedAgentTypes sets allowed agent types for the link. Warning: it does copy argument
+func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Movement) {
+	return func(movement *Movement) {
+		movement.allowedAgentTypes = make([]types.AgentType, len(allowedAgentTypes))
+		copy(movement.allowedAgentTypes, allowedAgentTypes)
+	}
+}
+
+// WithMacroNodeID sets parent macro node identifier
+func WithMacroNodeID(nodeID gmns.NodeID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.macroNodeID = nodeID
+	}
+}
+
+// WithIncomeMacroLinkID sets income macro link indetifier
+func WithIncomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.incomeMacroLinkID = linkID
+	}
+}
+
+// WithStartIncomeLaneSeqID sets first index of the income lane
+func WithStartIncomeLaneSeqID(seqID int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.startIncomeLaneSeqID = seqID
+	}
+}
+
+// WithEndIncomeLaneSeqID sets last index of the income lane
+func WithEndIncomeLaneSeqID(seqID int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.endIncomeLaneSeqID = seqID
+	}
+}
+
+// WithIncomeLaneStart sets first lane of the income link
+func WithIncomeLaneStart(start int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.incomeLaneStart = start
+	}
+}
+
+// WithIncomeLaneEnd sets last lane of the income link
+func WithIncomeLaneEnd(end int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.incomeLaneEnd = end
+	}
+}
+
+// WithOutcomeMacroLinkID sets outcome macro link indetifier
+func WithOutcomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.outcomeMacroLinkID = linkID
+	}
+}
+
+// WithStartOutcomeLaneSeqID sets first index of the outcome lane
+func WithStartOutcomeLaneSeqID(seqID int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.startOutcomeLaneSeqID = seqID
+	}
+}
+
+// WithEndOutcomeLaneSeqID sets last index of the outcome lane
+func WithEndOutcomeLaneSeqID(seqID int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.endOutcomeLaneSeqID = seqID
+	}
+}
+
+// WithOutcomeLaneStart sets first lane of the outcome link
+func WithOutcomeLaneStart(start int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.outcomeLaneStart = start
+	}
+}
+
+// WithOutcomeLaneEnd sets last lane of the outcome link
+func WithOutcomeLaneEnd(end int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.outcomeLaneEnd = end
+	}
+}
+
+// WithOSMNodeID sets OSM node identifier
+func WithOSMNodeID(nodeID osm.NodeID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.osmNodeID = nodeID
+	}
+}
+
+// WithFromOSMNodeID sets source OSM node identifier
+func WithFromOSMNodeID(nodeID osm.NodeID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.fromOsmNodeID = nodeID
+	}
+}
+
+// WithToOSMNodeID sets target OSM node identifier
+func WithToOSMNodeID(nodeID osm.NodeID) func(*Movement) {
+	return func(movement *Movement) {
+		movement.toOsmNodeID = nodeID
+	}
+}
+
+// WithType sets type for the movement
+func WithType(mType MovementType) func(*Movement) {
+	return func(movement *Movement) {
+		movement.mType = mType
+	}
+}
+
+// WithMvmtTextID sets composite type for the movement
+func WithMvmtTextID(mvmtTxtID MovementCompositeType) func(*Movement) {
+	return func(movement *Movement) {
+		movement.mTextID = mvmtTxtID
+	}
+}
+
+// WithControlType sets control type for the movement
+func WithControlType(controlType types.ControlType) func(*Movement) {
+	return func(movement *Movement) {
+		movement.controlType = controlType
+	}
+}
+
+// WithLanesNum sets number of lanes for the movement
+func WithLanesNum(lanesNum int) func(*Movement) {
+	return func(movement *Movement) {
+		movement.lanesNum = lanesNum
+	}
 }
