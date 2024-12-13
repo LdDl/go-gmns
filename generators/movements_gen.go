@@ -8,7 +8,7 @@ import (
 )
 
 // GenerateMovements generates movements for the given macroscopic network
-func GenerateMovements(macroNet macro.Net) (movement.MovementsStorage, error) {
+func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
 	ans := movement.NewMovementsStorage()
 	for i := range macroNet.Nodes {
 		node := macroNet.Nodes[i]
