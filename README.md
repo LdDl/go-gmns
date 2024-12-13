@@ -11,6 +11,9 @@ It is just implementation of Golang structure of basic data in GMNS
     - [x] Net
     - [x] GeoJSON
 - [ ] [**W.I.P**] Movements
+    - [ ] Main information
+    - [ ] Utils
+    - [x] GeoJSON
 - [ ] [**W.I.P**] Mesoscopic network
     - [ ] Links
     - [ ] Nodes

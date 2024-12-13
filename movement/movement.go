@@ -42,6 +42,39 @@ type Movement struct {
 	lanesNum    int
 }
 
+// NewMovement creates pointer to the new Movement
+func NewMovement(id gmns.MovementID, macroNodeID gmns.NodeID, incomeMacroLinkID, outcomeMacroLinkID gmns.LinkID, mvmtTxtID MovementCompositeType, mvmtType MovementType, options ...func(*Movement)) *Movement {
+	newMovement := &Movement{
+		name:                  "",
+		geom:                  orb.LineString{},
+		geomEuclidean:         orb.LineString{},
+		allowedAgentTypes:     []types.AgentType{},
+		ID:                    id,
+		macroNodeID:           macroNodeID,
+		incomeMacroLinkID:     incomeMacroLinkID,
+		startIncomeLaneSeqID:  -1,
+		endIncomeLaneSeqID:    -1,
+		incomeLaneStart:       -1,
+		incomeLaneEnd:         -1,
+		outcomeMacroLinkID:    outcomeMacroLinkID,
+		startOutcomeLaneSeqID: -1,
+		endOutcomeLaneSeqID:   -1,
+		outcomeLaneStart:      -1,
+		outcomeLaneEnd:        -1,
+		osmNodeID:             osm.NodeID(-1),
+		fromOsmNodeID:         osm.NodeID(-1),
+		toOsmNodeID:           osm.NodeID(-1),
+		mType:                 mvmtType,
+		mTextID:               mvmtTxtID,
+		controlType:           types.CONTROL_TYPE_NOT_SIGNAL,
+		lanesNum:              -1,
+	}
+	for _, option := range options {
+		option(newMovement)
+	}
+	return newMovement
+}
+
 // Name returns movement alias.
 func (movement *Movement) Name() string {
 	return movement.name
@@ -62,12 +95,12 @@ func (movement *Movement) AllowedAgentTypes() []types.AgentType {
 	return movement.allowedAgentTypes
 }
 
-// MacroNode returns parent macro node. Outputs "-1" if it was not set.
+// MacroNode returns parent macro node. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
 func (movement *Movement) MacroNode() gmns.NodeID {
 	return movement.macroNodeID
 }
 
-// IncomeMacroLink returns income macro link. Outputs "-1" if it was not set.
+// IncomeMacroLink returns income macro link. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
 func (movement *Movement) IncomeMacroLink() gmns.LinkID {
 	return movement.incomeMacroLinkID
 }
@@ -92,7 +125,7 @@ func (movement *Movement) IncomeLaneEnd() int {
 	return movement.incomeLaneEnd
 }
 
-// OutcomeMacroLink returns outcome macro link. Outputs "-1" if it was not set.
+// OutcomeMacroLink returns outcome macro link. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
 func (movement *Movement) OutcomeMacroLink() gmns.LinkID {
 	return movement.outcomeMacroLinkID
 }
@@ -181,14 +214,14 @@ func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Movement) 
 	}
 }
 
-// WithMacroNodeID sets parent macro node identifier
+// WithMacroNodeID sets parent macro node identifier. Should not be used since it necessary part of NewMovement(...).
 func WithMacroNodeID(nodeID gmns.NodeID) func(*Movement) {
 	return func(movement *Movement) {
 		movement.macroNodeID = nodeID
 	}
 }
 
-// WithIncomeMacroLinkID sets income macro link indetifier
+// WithIncomeMacroLinkID sets income macro link indetifier. Should not be used since it necessary part of NewMovement(...).
 func WithIncomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
 	return func(movement *Movement) {
 		movement.incomeMacroLinkID = linkID
@@ -223,7 +256,7 @@ func WithIncomeLaneEnd(end int) func(*Movement) {
 	}
 }
 
-// WithOutcomeMacroLinkID sets outcome macro link indetifier
+// WithOutcomeMacroLinkID sets outcome macro link indetifier. Should not be used since it necessary part of NewMovement(...).
 func WithOutcomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
 	return func(movement *Movement) {
 		movement.outcomeMacroLinkID = linkID
@@ -279,14 +312,14 @@ func WithToOSMNodeID(nodeID osm.NodeID) func(*Movement) {
 	}
 }
 
-// WithType sets type for the movement
+// WithType sets type for the movement. Should not be used since it necessary part of NewMovement(...).
 func WithType(mType MovementType) func(*Movement) {
 	return func(movement *Movement) {
 		movement.mType = mType
 	}
 }
 
-// WithMvmtTextID sets composite type for the movement
+// WithMvmtTextID sets composite type for the movement. Should not be used since it necessary part of NewMovement(...).
 func WithMvmtTextID(mvmtTxtID MovementCompositeType) func(*Movement) {
 	return func(movement *Movement) {
 		movement.mTextID = mvmtTxtID
