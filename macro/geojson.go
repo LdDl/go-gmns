@@ -53,3 +53,15 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	f.Properties["name"] = node.Name()
 	return f
 }
+
+// GeoFeatureCollection returns GeoJSON FeatureCollection consisting of Linestring and Point features for the given road network
+func (net *Net) GeoFeatureCollection() *geojson.FeatureCollection {
+	fc := geojson.NewFeatureCollection()
+	for _, node := range net.Nodes {
+		fc.Append(node.GeoFeature())
+	}
+	for _, link := range net.Links {
+		fc.Append(link.GeoFeature())
+	}
+	return fc
+}
