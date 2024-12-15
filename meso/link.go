@@ -233,15 +233,15 @@ func WithTargetNodeID(nodeID gmns.NodeID) func(*Link) {
 	}
 }
 
-// WithMacroNodeID sets parent macro node identifier
-func WithMacroNodeID(macroNodeID gmns.NodeID) func(*Link) {
+// WithLineMacroNodeID sets parent macro node identifier
+func WithLineMacroNodeID(macroNodeID gmns.NodeID) func(*Link) {
 	return func(link *Link) {
 		link.macroNodeID = macroNodeID
 	}
 }
 
-// WithMacroLinkID sets parent macro link identifier
-func WithMacroLinkID(macroLinkID gmns.LinkID) func(*Link) {
+// WithLineMacroLinkID sets parent macro link identifier
+func WithLineMacroLinkID(macroLinkID gmns.LinkID) func(*Link) {
 	return func(link *Link) {
 		link.macroLinkID = macroLinkID
 	}
