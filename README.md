@@ -14,10 +14,10 @@ It is just implementation of Golang structure of basic data in GMNS
     - [x] Main information
     - [x] Utils
     - [x] GeoJSON
-- [ ] [**W.I.P**] Mesoscopic network
+- [x] Mesoscopic network
     - [x] Links
     - [x] Nodes
-    - [ ] Net
+    - [x] Net
     - [x] GeoJSON
 - [ ] [**T.B.D**] Microscopic network
     - [ ] Links
