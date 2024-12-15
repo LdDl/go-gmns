@@ -36,7 +36,12 @@ func (link *Link) GeoFeature() *geojson.Feature {
 func (node *Node) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(nil)
 	f.ID = node.ID
-	panic("@tbd")
+	f.Properties["id"] = node.ID
+	f.Properties["zone_id"] = node.MacroZone()
+	f.Properties["macro_node_id"] = node.MacroNode()
+	f.Properties["macro_link_id"] = node.MacroLink()
+	f.Properties["activity_link_type"] = node.ActivityLinkType().String()
+	f.Properties["boundary_type"] = node.BoundaryType().String()
 	return f
 }
 
