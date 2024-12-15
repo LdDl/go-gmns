@@ -268,14 +268,14 @@ func WithOSMWayID(osmWayID osm.WayID) func(*Link) {
 	}
 }
 
-// WithSourceNodeID sets source node identifier
+// WithSourceNodeID sets source node identifier. Should not be used since it necessary part of NewLinkFrom(...).
 func WithSourceNodeID(nodeID gmns.NodeID) func(*Link) {
 	return func(link *Link) {
 		link.sourceNodeID = nodeID
 	}
 }
 
-// WithTargetNodeID sets target node identifier
+// WithTargetNodeID sets target node identifier. Should not be used since it necessary part of NewLinkFrom(...).
 func WithTargetNodeID(nodeID gmns.NodeID) func(*Link) {
 	return func(link *Link) {
 		link.targetNodeID = nodeID
