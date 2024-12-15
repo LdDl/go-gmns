@@ -1,6 +1,8 @@
 package meso
 
 import (
+	"strings"
+
 	"github.com/paulmach/orb/geojson"
 )
 
@@ -8,7 +10,25 @@ import (
 func (link *Link) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(nil)
 	f.ID = link.ID
-	panic("@tbd")
+	f.Properties["id"] = link.ID
+	f.Properties["source_node"] = link.SourceNode()
+	f.Properties["target_node"] = link.TargetNode()
+	f.Properties["macro_node_id"] = link.MacroNode()
+	f.Properties["macro_node_id"] = link.MacroLink()
+	f.Properties["link_type"] = link.LinkType()
+	f.Properties["control_type"] = link.ControlType()
+	f.Properties["movement_id"] = link.Movement()
+	f.Properties["movement_composite_type"] = link.MvmtTextID().String()
+	allowedAgentTypes := link.AllowedAgentTypes()
+	allowedAgentTypesStrs := make([]string, len(link.AllowedAgentTypes()))
+	for i, agentType := range allowedAgentTypes {
+		allowedAgentTypesStrs[i] = agentType.String()
+	}
+	f.Properties["allowed_agent_types"] = strings.Join(allowedAgentTypesStrs, ",")
+	f.Properties["lanes_num"] = link.LanesNum()
+	f.Properties["free_speed"] = link.FreeSpeed()
+	f.Properties["capacity"] = link.Capacity()
+	f.Properties["length_meters"] = link.LengthMeters()
 	return f
 }
 
