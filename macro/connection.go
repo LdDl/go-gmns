@@ -188,7 +188,8 @@ func GenerateIntersectionsConnections(incomingLink *Link, outcomingLinks []*Link
 		} else if outcomingLanes < len(middleLinks) {
 			laneNumber := -1
 			linkIndex := -1
-			for laneNumber = 0; laneNumber < outcomingLanes-1; laneNumber++ {
+			for laneNumberIdx := 0; laneNumberIdx < outcomingLanes-1; laneNumberIdx++ {
+				laneNumber++
 				linkIndex = laneNumber
 				middleLink := middleLinks[linkIndex]
 				connections[indicesMap[middleLink.ID]] = []ConnectionPair{
@@ -198,7 +199,8 @@ func GenerateIntersectionsConnections(incomingLink *Link, outcomingLinks []*Link
 			}
 			laneNumber++
 			startLinkIndex := linkIndex + 1
-			for linkIndex = startLinkIndex; linkIndex < len(middleLinks); linkIndex++ {
+			for linkIndexIdx := startLinkIndex; linkIndexIdx < len(middleLinks); linkIndexIdx++ {
+				linkIndex++
 				middleLink := middleLinks[linkIndex]
 				connections[indicesMap[middleLink.ID]] = []ConnectionPair{
 					{laneNumber, laneNumber},
