@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 
 	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
@@ -14,7 +15,13 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geo"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
+
+func init() {
+	zerolog.TimeFieldFormat = time.RFC3339
+}
 
 const (
 	SHORTCUT_LENGTH  = 0.1
@@ -27,6 +34,7 @@ var (
 	ErrNotImplementedYet = fmt.Errorf("not implemented yet")
 	ErrBadParentInfo     = fmt.Errorf("bad parent information")
 	ErrBadInterface      = fmt.Errorf("bad interface")
+	VERBOSE              = true
 )
 
 type macroLinkProcessing struct {
@@ -57,6 +65,15 @@ type macroLinkProcessing struct {
 }
 
 func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Msg("Preparing mesoscopic network")
+	}
+
+	st := time.Now()
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Msg("Preparing geometries offsets")
+	}
+
 	macroLinks := macroLinksToSlice(macroNet.Links)
 	needToObserve := make(map[gmns.LinkID]*macroLinkProcessing, len(macroLinks))
 	for i := range macroLinks {
@@ -112,6 +129,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / macroLink.LengthMeters()) * macroLinkProcess.lengthMetersOffset
 		}
 	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done preparing geometries offsets. Aggregate movements for nodes")
+	}
+	st = time.Now()
 	macroNodesMovements := make(map[gmns.NodeID][]*movement.Movement, len(macroNet.Nodes))
 	for i := range movements {
 		mvmt := movements[i]
@@ -124,7 +145,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		}
 		macroNodesMovements[macroNodeID] = append(macroNodesMovements[macroNodeID], mvmt)
 	}
-
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done aggregating movements. Process movements (check necessity)")
+	}
+	st = time.Now()
 	macroNodesNeedMovement := make(map[gmns.NodeID]bool)
 	// Assume that every node need movement (i.e. all nodes are intersections by default). We will filter this set later
 	for i := range macroNet.Nodes {
@@ -251,30 +275,53 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		}
 	}
 
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done checking necessity of movements. Process movements (calculate cuts' lengths and perform cuts)")
+	}
+	st = time.Now()
 	for macroLinkID := range needToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
 		macroLinkProcess.updateCutLength()
 		macroLinkProcess.performCut()
 	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done cuts. Build mesoscopic links")
+	}
+	st = time.Now()
 
 	mesoNodes, mesoLinks, err := generateBaseNodesLinks(macroNet.Nodes, needToObserve)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't generate base mesoscopic nodes and links")
 	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done building mesoscopic links. Connect mesoscopic links")
+	}
+	st = time.Now()
 
 	err = connectMesoscopicLinks(mesoLinks, mesoNodes, macroNet.Nodes, macroNet.Links, needToObserve, macroNodesMovements, macroNodesNeedMovement)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't prepare connections between mesoscopic links")
 	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done connecting links. Updating boundary type for mesoscopic nodes")
+	}
+	st = time.Now()
 
 	err = updateBoundaryType(mesoNodes, macroNet.Nodes)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't update boundary types for mesoscopic nodes")
 	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done updating boundary type. Updating additional information for mesoscopic links")
+	}
+	st = time.Now()
 
 	err = updateLinksProperties(mesoNodes, mesoLinks, macroNet.Nodes, macroNet.Links, movements, macroNodesMovements)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't update additional information for mesoscopic links")
+	}
+	if VERBOSE {
+		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done updating links additional information. Preparing mesoscopic network done!")
 	}
 
 	mesoNet := meso.Net{
