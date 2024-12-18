@@ -76,6 +76,11 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 
 	macroLinks := macroLinksToSlice(macroNet.Links)
 	needToObserve := make(map[gmns.LinkID]*macroLinkProcessing, len(macroLinks))
+	hashesEuclidean := make(map[gmns.LinkID]string, len(macroLinks))
+	for i := range macroLinks {
+		hashesEuclidean[macroLinks[i].ID] = geomath.GeometryHash(macroLinks[i].GeomEuclidean())
+	}
+
 	for i := range macroLinks {
 		macroLink := macroLinks[i]
 		macroLinkID := macroLink.ID
@@ -84,12 +89,24 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		}
 		reversedGeom := macroLink.GeomEuclidean().Clone() // Clone to prevent changing macroscopic link Euclidean geometry
 		reversedGeom.Reverse()
+		reversedGeomHash := geomath.GeometryHash(reversedGeom)
 		reversedLinkExists := false
 		// Scan other links
 		for j := range macroLinks[i+1:] {
 			macroLinkCompare := macroLinks[i+1:][j]
 			macroLinkCompareID := macroLinkCompare.ID
-			if orb.Equal(reversedGeom, macroLinkCompare.GeomEuclidean()) {
+			macroLinkGeomEuclidean := macroLinkCompare.GeomEuclidean()
+			if len(reversedGeom) != len(macroLinkGeomEuclidean) {
+				continue
+			}
+			hashedGeomEuclidean, ok := hashesEuclidean[macroLinkCompareID]
+			if !ok {
+				panic("Could not happen. Hashes are prepared for every macroscopic link")
+			}
+			if reversedGeomHash != hashedGeomEuclidean {
+				continue
+			}
+			if orb.Equal(reversedGeom, macroLinkGeomEuclidean) {
 				reversedLinkExists = true
 				needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
 				needToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
