@@ -103,10 +103,8 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if !ok {
 				panic("Could not happen. Hashes are prepared for every macroscopic link")
 			}
-			if reversedGeomHash != hashedGeomEuclidean {
-				continue
-			}
-			if orb.Equal(reversedGeom, macroLinkGeomEuclidean) {
+			geomEq := reversedGeomHash != hashedGeomEuclidean
+			if geomEq {
 				reversedLinkExists = true
 				needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
 				needToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
