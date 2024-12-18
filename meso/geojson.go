@@ -8,7 +8,7 @@ import (
 
 // GeoFeature returns GeoJSON LineString feature for the given link
 func (link *Link) GeoFeature() *geojson.Feature {
-	f := geojson.NewFeature(nil)
+	f := geojson.NewFeature(link.Geom())
 	f.ID = link.ID
 	f.Properties["id"] = link.ID
 	f.Properties["source_node"] = link.SourceNode()
@@ -34,7 +34,7 @@ func (link *Link) GeoFeature() *geojson.Feature {
 
 // GeoFeature returns GeoJSON Point feature for the given node
 func (node *Node) GeoFeature() *geojson.Feature {
-	f := geojson.NewFeature(nil)
+	f := geojson.NewFeature(node.Geom())
 	f.ID = node.ID
 	f.Properties["id"] = node.ID
 	f.Properties["zone_id"] = node.MacroZone()
