@@ -51,7 +51,7 @@ func DefaultMicroGenOptions() MicroGenOptions {
 type mesoMicroMapping map[gmns.LinkID]map[int][]gmns.NodeID
 
 // GenerateMicroscopic generates microscopic network from macro and meso networks
-func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, opts ...MicroGenOptions) (*micro.Net, error) {
+func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movement.MovementsStorage, opts ...MicroGenOptions) (*micro.Net, error) {
 	options := DefaultMicroGenOptions()
 	if len(opts) > 0 {
 		options = opts[0]
@@ -79,6 +79,13 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, opts ...MicroGe
 	err := connectMicroLinks(mesoNet, microNet, options)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect micro links")
+	}
+
+	// Compute movement flags and fix gaps
+	movementFlags := ComputeMovementFlags(macroNet, movements)
+	err = fixGaps(macroNet, mesoNet, microNet, macroLinkMesoLinks, movementFlags, movements)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to fix gaps")
 	}
 
 	if options.Verbose {
@@ -754,4 +761,215 @@ func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool) (main []
 	}
 
 	return agentTypes, false, false
+}
+
+// fixGaps removes duplicate micro nodes when movements are not needed at certain macro nodes.
+// When movementIsNeeded == false for a macro node, there are duplicate micro nodes at the
+// boundary between incoming and outcoming meso links. This function removes the duplicates
+// based on the downstreamIsTarget and upstreamIsTarget flags on macro links.
+func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroLinkMesoLinks map[gmns.LinkID][]gmns.LinkID, flags *MovementFlags, movements movement.MovementsStorage) error {
+	// Build global mapping of meso link to micro nodes per lane
+	globalMapping := buildMesoMicroMapping(microNet)
+
+	// Group movements by macro node
+	movementsByNode := make(map[gmns.NodeID][]*movement.Movement)
+	for _, mvmt := range movements {
+		movementsByNode[mvmt.MacroNode()] = append(movementsByNode[mvmt.MacroNode()], mvmt)
+	}
+
+	// Process each macro node
+	for _, macroNode := range macroNet.Nodes {
+		// Skip nodes where movements are needed (intersections)
+		if flags.NodesNeedMovement[macroNode.ID] {
+			continue
+		}
+
+		// Get movements for this node
+		nodeMvmts := movementsByNode[macroNode.ID]
+
+		// Process each movement
+		for _, mvmt := range nodeMvmts {
+			incomingMacroLinkID := mvmt.IncomeMacroLink()
+			outcomingMacroLinkID := mvmt.OutcomeMacroLink()
+
+			if _, ok := macroNet.Links[incomingMacroLinkID]; !ok {
+				continue
+			}
+			if _, ok := macroNet.Links[outcomingMacroLinkID]; !ok {
+				continue
+			}
+
+			// Collect lanes info from movement
+			incomeLaneStart := mvmt.IncomeLaneStart()
+			incomeLaneEnd := mvmt.IncomeLaneEnd()
+			outcomeLaneStart := mvmt.OutcomeLaneStart()
+			outcomeLaneEnd := mvmt.OutcomeLaneEnd()
+
+			// Build lane arrays
+			var incomeLanes, outcomeLanes []int
+			for laneNo := incomeLaneStart; laneNo <= incomeLaneEnd; laneNo++ {
+				incomeLanes = append(incomeLanes, laneNo)
+			}
+			for laneNo := outcomeLaneStart; laneNo <= outcomeLaneEnd; laneNo++ {
+				outcomeLanes = append(outcomeLanes, laneNo)
+			}
+
+			// Skip if lane counts don't match
+			if len(incomeLanes) != len(outcomeLanes) {
+				continue
+			}
+			// Skip if any lane is 0 (invalid)
+			hasZero := false
+			for _, l := range incomeLanes {
+				if l == 0 {
+					hasZero = true
+					break
+				}
+			}
+			for _, l := range outcomeLanes {
+				if l == 0 {
+					hasZero = true
+					break
+				}
+			}
+			if hasZero {
+				continue
+			}
+
+			// Get the last meso link of the incoming macro link
+			incomingMesoLinkIDs := macroLinkMesoLinks[incomingMacroLinkID]
+			if len(incomingMesoLinkIDs) == 0 {
+				continue
+			}
+			incomingMesoLinkID := incomingMesoLinkIDs[len(incomingMesoLinkIDs)-1]
+			incomingMesoLink, ok := mesoNet.Links[incomingMesoLinkID]
+			if !ok {
+				continue
+			}
+
+			// Get the first meso link of the outcoming macro link
+			outcomingMesoLinkIDs := macroLinkMesoLinks[outcomingMacroLinkID]
+			if len(outcomingMesoLinkIDs) == 0 {
+				continue
+			}
+			outcomingMesoLinkID := outcomingMesoLinkIDs[0]
+			outcomingMesoLink, ok := mesoNet.Links[outcomingMesoLinkID]
+			if !ok {
+				continue
+			}
+
+			// Get micro nodes for each meso link
+			incomingMicroLanes := globalMapping[incomingMesoLinkID]
+			outcomingMicroLanes := globalMapping[outcomingMesoLinkID]
+
+			if incomingMicroLanes == nil || outcomingMicroLanes == nil {
+				continue
+			}
+
+			// Calculate lane indices with lanes change offset
+			incomingLanesChange := incomingMesoLink.LanesChange()
+			outcomingLanesChange := outcomingMesoLink.LanesChange()
+
+			incomeLaneStartIdx := incomingLanesChange[0] + incomeLanes[0]
+			if incomeLanes[0] >= 0 {
+				incomeLaneStartIdx--
+			}
+			outcomeLaneStartIdx := outcomingLanesChange[0] + outcomeLanes[0]
+			if outcomeLanes[0] >= 0 {
+				outcomeLaneStartIdx--
+			}
+
+			// Skip if lane indices are invalid
+			if incomeLaneStartIdx < 0 || outcomeLaneStartIdx < 0 {
+				continue
+			}
+			if incomeLaneStartIdx+len(incomeLanes)-1 > incomingMesoLink.LanesNum()-1 {
+				continue
+			}
+			if outcomeLaneStartIdx+len(outcomeLanes)-1 > outcomingMesoLink.LanesNum()-1 {
+				continue
+			}
+
+			lanesNum := len(incomeLanes)
+
+			// Process according to downstream/upstream target flags
+			if flags.DownstreamIsTarget[incomingMacroLinkID] && !flags.UpstreamIsTarget[outcomingMacroLinkID] {
+				// Delete outcoming micro nodes (first nodes of outcoming lanes)
+				for i := 0; i < lanesNum; i++ {
+					incomeLaneIdx := incomeLaneStartIdx + i + 1 // Convert to 1-indexed for globalMapping
+					outcomeLaneIdx := outcomeLaneStartIdx + i + 1
+
+					incomeLaneNodes := incomingMicroLanes[incomeLaneIdx]
+					outcomeLaneNodes := outcomingMicroLanes[outcomeLaneIdx]
+
+					if len(incomeLaneNodes) == 0 || len(outcomeLaneNodes) == 0 {
+						continue
+					}
+
+					incomeLastNodeID := incomeLaneNodes[len(incomeLaneNodes)-1]
+					outcomeFirstNodeID := outcomeLaneNodes[0]
+
+					outcomeFirstNode, ok := microNet.Nodes[outcomeFirstNodeID]
+					if !ok {
+						continue
+					}
+
+					// Redirect all outcoming links from outcomeFirstNode to start from incomeLastNode
+					for el := outcomeFirstNode.OutcomingLinks().Front(); el != nil; el = el.Next() {
+						microLinkID := el.Key.(gmns.LinkID)
+						microLink, ok := microNet.Links[microLinkID]
+						if !ok {
+							continue
+						}
+						microLink.SetSourceNode(incomeLastNodeID)
+						if incomeLastNode, ok := microNet.Nodes[incomeLastNodeID]; ok {
+							incomeLastNode.AddOutcomingLink(microLinkID)
+						}
+					}
+
+					// Delete the duplicate node
+					delete(microNet.Nodes, outcomeFirstNodeID)
+				}
+			} else if !flags.DownstreamIsTarget[incomingMacroLinkID] && flags.UpstreamIsTarget[outcomingMacroLinkID] {
+				// Delete incoming micro nodes (last nodes of incoming lanes)
+				for i := 0; i < lanesNum; i++ {
+					incomeLaneIdx := incomeLaneStartIdx + i + 1
+					outcomeLaneIdx := outcomeLaneStartIdx + i + 1
+
+					incomeLaneNodes := incomingMicroLanes[incomeLaneIdx]
+					outcomeLaneNodes := outcomingMicroLanes[outcomeLaneIdx]
+
+					if len(incomeLaneNodes) == 0 || len(outcomeLaneNodes) == 0 {
+						continue
+					}
+
+					incomeLastNodeID := incomeLaneNodes[len(incomeLaneNodes)-1]
+					outcomeFirstNodeID := outcomeLaneNodes[0]
+
+					incomeLastNode, ok := microNet.Nodes[incomeLastNodeID]
+					if !ok {
+						continue
+					}
+
+					// Redirect all incoming links to incomeLastNode to target outcomeFirstNode
+					for el := incomeLastNode.IncomingLinks().Front(); el != nil; el = el.Next() {
+						microLinkID := el.Key.(gmns.LinkID)
+						microLink, ok := microNet.Links[microLinkID]
+						if !ok {
+							continue
+						}
+						microLink.SetTargetNode(outcomeFirstNodeID)
+						if outcomeFirstNode, ok := microNet.Nodes[outcomeFirstNodeID]; ok {
+							outcomeFirstNode.AddIncomingLink(microLinkID)
+						}
+					}
+
+					// Delete the duplicate node
+					delete(microNet.Nodes, incomeLastNodeID)
+				}
+			}
+		}
+	}
+
+	return nil
 }
