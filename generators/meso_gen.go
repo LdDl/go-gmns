@@ -361,7 +361,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	}
 	st = time.Now()
 
-	err = updateLinksProperties(mesoNodes, mesoLinks, macroNet.Nodes, macroNet.Links, movements, macroNodesMovements)
+	err = updateLinksProperties(mesoNodes, mesoLinks, macroNet.Nodes, macroNet.Links, movements)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't update additional information for mesoscopic links")
 	}
@@ -782,7 +782,6 @@ func updateLinksProperties(
 	macroNodes map[gmns.NodeID]*macro.Node,
 	macroLinks map[gmns.LinkID]*macro.Link,
 	movements movement.MovementsStorage,
-	macroNodesMovements map[gmns.NodeID][]*movement.Movement,
 ) error {
 	movementMesoLinks := make(map[gmns.LinkID]struct{})
 	for i := range mesoLinks {
