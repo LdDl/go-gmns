@@ -96,6 +96,14 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if _, ok := localNeedToObserve[macroLinkID]; ok {
 				continue
 			}
+			// Check if already processed by another batch
+			mu.Lock()
+			_, alreadyProcessed := needToObserve[macroLinkID]
+			mu.Unlock()
+			if alreadyProcessed {
+				continue
+			}
+
 			reversedGeom := macroLink.GeomEuclidean().Clone()
 			reversedGeom.Reverse()
 			reversedGeomHash := geomath.GeometryHash(reversedGeom)
@@ -124,10 +132,12 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 				localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
 			}
 		}
-		// Merge batch-local results into the outside map
+		// Merge batch-local results into the outside map (only if not already present)
 		mu.Lock()
 		for k, v := range localNeedToObserve {
-			needToObserve[k] = v
+			if _, exists := needToObserve[k]; !exists {
+				needToObserve[k] = v
+			}
 		}
 		mu.Unlock()
 	}
