@@ -7,9 +7,74 @@ This package provides:
 - Data structures for macroscopic, mesoscopic, and microscopic networks
 - Generators for meso and micro networks from macro networks
 - Movement generation at intersections/junctions
-- GeoJSON export for  debugging and visualization
+- GeoJSON export for debugging and visualization
 
 This package has been created for [osm2gmns](https://github.com/LdDl/osm2gmns) mostly, but can be used independently.
+
+## Architecture
+
+### Generation Pipeline
+
+```mermaid
+flowchart LR
+    subgraph Input
+        OSM[OSM Data]
+    end
+
+    subgraph go-gmns processing
+        Macro[Macro Network<br/>nodes + links]
+        Mvmt[Movements<br/>turn maneuvers]
+        Meso[Meso Network<br/>lane-level]
+        Micro[Micro Network<br/>cell-based]
+    end
+
+    OSM --> Macro
+    Macro --> Mvmt
+    Macro --> Meso
+    Mvmt --> Meso
+    Macro --> Micro
+    Meso --> Micro
+    Mvmt --> Micro
+```
+
+### Network Resolution Levels
+
+| Level | Description | Typical Use Case |
+|-------|-------------|------------------|
+| **Macro** | Road segments between intersections/lane topology changes. Single centerline geometry shared by both directions. Nodes = intersections, lane additions/drops | Route planning, traffic assignment |
+| **Meso** | One link per direction with offset geometry. Stores lane count attribute. Splits where lane count changes | Signal optimization, lane-based routing |
+| **Micro** | Per-lane, per-cell representation. Each meso link expanded to N lanes × M cells. Inter-lane links for lane changing after each cell | Microsimulation, car-following models |
+
+### Data Flow Example
+
+```
+Bidirectional road A<===>B, 2 lanes per direction:
+
+MACRO (centerline geometry, shared by both directions):
+    (A) ==========[Link 1]==========> (B)
+    (A) <==========[Link 2]========== (B)
+
+MESO (offset geometry, one link per direction, lanes=2):
+    Direction A→B:  (X)----[Link 1]---->(Y)
+    Direction B→A:  (Z)----[Link 2]---->(K)
+
+MICRO (per-lane cells + lane-change links):
+    For meso Link 1 (lanes=2):
+
+    Lane 1: o-F---o-F---o-F---o-F---o  cell_type=forward
+             \   L \   L \   L \   L   cell_type=lane_change (left)
+              \ /   \ /   \ /   \ /
+              / \   / \   / \   / \    cell_type=lane_change (right)
+             /   R /   R /   R /   R
+    Lane 2: o-F---o-F---o-F---o-F---o  cell_type=forward
+```
+
+Scale (typical):
+| Level | Nodes | Links | Ratio |
+|-------|-------|-------|-------|
+| Macro | 20 | 38 | 1x |
+| Meso | 76 | 110 | ~3x |
+| Micro | 3078 | 4022 | ~100x |
 
 ## Installation
 

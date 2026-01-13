@@ -41,6 +41,7 @@ var (
 
 type macroLinkProcessing struct {
 	needsOffset         bool
+	offsetDirection     float64 // -1.0 or 1.0; determines which side of centerline to offset
 	id                  gmns.LinkID
 	offsetGeomEuclidean orb.LineString
 	offsetGeom          orb.LineString
@@ -114,13 +115,13 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 				}
 				if reversedGeomHash == hashedGeomEuclidean {
 					reversedLinkExists = true
-					localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
-					localNeedToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
+					localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+					localNeedToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, offsetDirection: 1.0, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
 					break
 				}
 			}
 			if !reversedLinkExists {
-				localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+				localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
 			}
 		}
 		// Merge batch-local results into the outside map
@@ -158,7 +159,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			continue
 		}
 		offsetDistance := 2 * (float64(macroLink.MaxLanes())/2 + 0.5) * macro.LANE_WIDTH
-		macroLinkProcess.offsetGeomEuclidean = geomath.OffsetCurve(macroLink.GeomEuclidean(), -offsetDistance)
+		macroLinkProcess.offsetGeomEuclidean = geomath.OffsetCurve(macroLink.GeomEuclidean(), macroLinkProcess.offsetDirection*offsetDistance)
 		macroLinkProcess.offsetGeom = geomath.LineToSpherical(macroLinkProcess.offsetGeomEuclidean)
 	}
 	// Update breakpoints since geometry has changed
