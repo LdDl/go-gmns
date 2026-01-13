@@ -3,9 +3,7 @@ package generators
 import (
 	"fmt"
 	"math"
-	"runtime"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/LdDl/go-gmns/gmns"
@@ -84,78 +82,44 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		hashesEuclidean[macroLinks[i].ID] = geomath.GeometryHash(macroLinks[i].GeomEuclidean())
 	}
 
-	// Result map with thread-safe access
-	var mu sync.Mutex
+	// Detect bidirectional links (single-threaded to avoid race conditions)
+	for i := 0; i < len(macroLinks); i++ {
+		macroLink := macroLinks[i]
+		macroLinkID := macroLink.ID
+		if _, ok := needToObserve[macroLinkID]; ok {
+			continue
+		}
 
-	processBatch := func(start, end int, wg *sync.WaitGroup) {
-		defer wg.Done()
-		localNeedToObserve := make(map[gmns.LinkID]*macroLinkProcessing) // Batch-local map
-		for i := start; i < end; i++ {
-			macroLink := macroLinks[i]
-			macroLinkID := macroLink.ID
-			if _, ok := localNeedToObserve[macroLinkID]; ok {
+		reversedGeom := macroLink.GeomEuclidean().Clone()
+		reversedGeom.Reverse()
+		reversedGeomHash := geomath.GeometryHash(reversedGeom)
+		reversedLinkExists := false
+
+		// Compare only with subsequent links
+		for j := i + 1; j < len(macroLinks); j++ {
+			macroLinkCompare := macroLinks[j]
+			macroLinkCompareID := macroLinkCompare.ID
+			macroLinkGeomEuclidean := macroLinkCompare.GeomEuclidean()
+			if len(reversedGeom) != len(macroLinkGeomEuclidean) {
 				continue
 			}
-			// Check if already processed by another batch
-			mu.Lock()
-			_, alreadyProcessed := needToObserve[macroLinkID]
-			mu.Unlock()
-			if alreadyProcessed {
-				continue
+			hashedGeomEuclidean, ok := hashesEuclidean[macroLinkCompareID]
+			if !ok {
+				panic("Could not happen. Hashes are prepared for every macroscopic link")
 			}
-
-			reversedGeom := macroLink.GeomEuclidean().Clone()
-			reversedGeom.Reverse()
-			reversedGeomHash := geomath.GeometryHash(reversedGeom)
-			reversedLinkExists := false
-
-			// Compare only with subsequent links
-			for j := i + 1; j < len(macroLinks); j++ {
-				macroLinkCompare := macroLinks[j]
-				macroLinkCompareID := macroLinkCompare.ID
-				macroLinkGeomEuclidean := macroLinkCompare.GeomEuclidean()
-				if len(reversedGeom) != len(macroLinkGeomEuclidean) {
-					continue
-				}
-				hashedGeomEuclidean, ok := hashesEuclidean[macroLinkCompareID]
-				if !ok {
-					panic("Could not happen. Hashes are prepared for every macroscopic link")
-				}
-				if reversedGeomHash == hashedGeomEuclidean {
-					reversedLinkExists = true
-					localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
-					localNeedToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
-					break
-				}
-			}
-			if !reversedLinkExists {
-				localNeedToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+			if reversedGeomHash == hashedGeomEuclidean {
+				reversedLinkExists = true
+				// Both bidirectional links use the same negative offset (-1.0)
+				// Since their geometries are reversed, they end up on opposite sides of centerline
+				needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+				needToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
+				break
 			}
 		}
-		// Merge batch-local results into the outside map (only if not already present)
-		mu.Lock()
-		for k, v := range localNeedToObserve {
-			if _, exists := needToObserve[k]; !exists {
-				needToObserve[k] = v
-			}
+		if !reversedLinkExists {
+			needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
 		}
-		mu.Unlock()
 	}
-
-	// Spawn worker goroutines
-	numWorkers := runtime.NumCPU()
-	batchSize := (len(macroLinks) + numWorkers - 1) / numWorkers // Divide equally
-	var wg sync.WaitGroup
-	for w := 0; w < numWorkers; w++ {
-		start := w * batchSize
-		end := start + batchSize
-		if end > len(macroLinks) {
-			end = len(macroLinks)
-		}
-		wg.Add(1)
-		go processBatch(start, end, &wg)
-	}
-	wg.Wait()
 
 	for macroLinkID := range needToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
