@@ -1,6 +1,8 @@
 package generators
 
 import (
+	"sort"
+
 	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/macro"
 	"github.com/LdDl/go-gmns/movement"
@@ -10,8 +12,16 @@ import (
 // GenerateMovements generates movements for the given macroscopic network
 func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
 	ans := movement.NewMovementsStorage()
-	for i := range macroNet.Nodes {
-		node := macroNet.Nodes[i]
+	// Sort node IDs for deterministic iteration
+	sortedNodeIDs := make([]gmns.NodeID, 0, len(macroNet.Nodes))
+	for id := range macroNet.Nodes {
+		sortedNodeIDs = append(sortedNodeIDs, id)
+	}
+	sort.Slice(sortedNodeIDs, func(i, j int) bool {
+		return sortedNodeIDs[i] < sortedNodeIDs[j]
+	})
+	for _, nodeID := range sortedNodeIDs {
+		node := macroNet.Nodes[nodeID]
 		movements, err := findMovements(node, macroNet.Links)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Can't find movements for macro node with ID: '%d' (OSM ID: '%d')", node.ID, node.OSMNode())

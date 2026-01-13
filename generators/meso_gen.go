@@ -121,7 +121,8 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		}
 	}
 
-	for macroLinkID := range needToObserve {
+	sortedNeedToObserve := sortedLinkIDs(needToObserve)
+	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
 		macroLink, ok := macroNet.Links[macroLinkID]
 		if !ok {
@@ -137,7 +138,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		macroLinkProcess.offsetGeom = geomath.LineToSpherical(macroLinkProcess.offsetGeomEuclidean)
 	}
 	// Update breakpoints since geometry has changed
-	for macroLinkID := range needToObserve {
+	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
 		// Re-calcuate length for offset geometry and round to 2 decimal places
 		macroLinkProcess.lengthMetersOffset = math.Round(geo.LengthHaversine(macroLinkProcess.offsetGeom)*100.0) / 100.0
@@ -154,8 +155,16 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	}
 	st = time.Now()
 	macroNodesMovements := make(map[gmns.NodeID][]*movement.Movement, len(macroNet.Nodes))
-	for i := range movements {
-		mvmt := movements[i]
+	// Sort movement IDs for deterministic iteration
+	sortedMovementIDs := make([]gmns.MovementID, 0, len(movements))
+	for mvmtID := range movements {
+		sortedMovementIDs = append(sortedMovementIDs, mvmtID)
+	}
+	sort.Slice(sortedMovementIDs, func(i, j int) bool {
+		return sortedMovementIDs[i] < sortedMovementIDs[j]
+	})
+	for _, mvmtID := range sortedMovementIDs {
+		mvmt := movements[mvmtID]
 		macroNodeID := mvmt.MacroNode()
 		if _, ok := macroNet.Nodes[macroNodeID]; !ok {
 			return nil, errors.Wrapf(macro.ErrNodeNotFound, "Agg movements; Node ID: %d", macroNodeID)
@@ -171,12 +180,13 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	st = time.Now()
 	macroNodesNeedMovement := make(map[gmns.NodeID]bool)
 	// Assume that every node need movement (i.e. all nodes are intersections by default). We will filter this set later
-	for i := range macroNet.Nodes {
-		macroNodesNeedMovement[macroNet.Nodes[i].ID] = true
+	sortedMacroNodeIDsMain := sortedMacroNodeIDs(macroNet.Nodes)
+	for _, nodeID := range sortedMacroNodeIDsMain {
+		macroNodesNeedMovement[nodeID] = true
 	}
 
-	for i := range macroNet.Nodes {
-		macroNode := macroNet.Nodes[i]
+	for _, nodeID := range sortedMacroNodeIDsMain {
+		macroNode := macroNet.Nodes[nodeID]
 		if macroNode.ControlType() == types.CONTROL_TYPE_IS_SIGNAL {
 			continue
 		}
@@ -299,7 +309,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done checking necessity of movements. Process movements (calculate cuts' lengths and perform cuts)")
 	}
 	st = time.Now()
-	for macroLinkID := range needToObserve {
+	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
 		macroLinkProcess.updateCutLength()
 		macroLinkProcess.performCut()
@@ -356,7 +366,71 @@ func macroLinksToSlice(links map[gmns.LinkID]*macro.Link) []*macro.Link {
 	for i := range links {
 		ans = append(ans, links[i])
 	}
+	// Sort by ID for deterministic iteration order
+	sort.Slice(ans, func(i, j int) bool {
+		return ans[i].ID < ans[j].ID
+	})
 	return ans
+}
+
+// sortedLinkIDs returns sorted slice of link IDs from a map
+func sortedLinkIDs(m map[gmns.LinkID]*macroLinkProcessing) []gmns.LinkID {
+	keys := make([]gmns.LinkID, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// sortedMacroNodeIDs returns sorted slice of node IDs from a map
+func sortedMacroNodeIDs(m map[gmns.NodeID]*macro.Node) []gmns.NodeID {
+	keys := make([]gmns.NodeID, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// sortedMesoNodeIDs returns sorted slice of meso node IDs from a map
+func sortedMesoNodeIDs(m map[gmns.NodeID]*meso.Node) []gmns.NodeID {
+	keys := make([]gmns.NodeID, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// sortedMesoLinkIDs returns sorted slice of meso link IDs from a map
+func sortedMesoLinkIDs(m map[gmns.LinkID]*meso.Link) []gmns.LinkID {
+	keys := make([]gmns.LinkID, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
+}
+
+// sortedLinkIDsGeneric returns sorted slice of link IDs from a map with struct{} values
+func sortedLinkIDsGeneric(m map[gmns.LinkID]struct{}) []gmns.LinkID {
+	keys := make([]gmns.LinkID, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+	return keys
 }
 
 func (macroLinkProcess *macroLinkProcessing) updateCutLength() {
@@ -488,7 +562,9 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 	expandedMesoNodes := make(map[gmns.NodeID]int)
 	collectedMesoNodes := make(map[gmns.NodeID]*meso.Node)
 	collectedMesoLinks := make(map[gmns.LinkID]*meso.Link)
-	for macroLinkID := range macroLinksProcessed {
+	// Sort keys for deterministic iteration
+	sortedKeys := sortedLinkIDs(macroLinksProcessed)
+	for _, macroLinkID := range sortedKeys {
 		macroLinkProcess := macroLinksProcessed[macroLinkID]
 
 		// Prepare source mesoscopic node
@@ -624,7 +700,8 @@ func connectMesoscopicLinks(
 	}
 
 	// Start main loop for finding connections between mesoscopic links
-	for macroNodeID := range macroNodes {
+	sortedMacroNodes := sortedMacroNodeIDs(macroNodes)
+	for _, macroNodeID := range sortedMacroNodes {
 		// macroNode := macroNodes[macroNodeID]
 		macroNodeMvmts, ok := macroNodesMovements[macroNodeID]
 		if !ok {

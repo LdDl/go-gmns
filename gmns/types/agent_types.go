@@ -22,6 +22,7 @@ var (
 		AGENT_BIKE: {},
 		AGENT_WALK: {},
 	}
+	sortedAgentTypes = []AgentType{AGENT_AUTO, AGENT_BIKE, AGENT_WALK}
 
 	AGENT_TYPES_DEFAULT = []AgentType{AGENT_AUTO}
 
@@ -142,7 +143,10 @@ func AgentsIntersection(left []AgentType, right []AgentType) map[AgentType]struc
 }
 
 func NewAllowableAgentTypeFrom(motorVehicle, motorcar, bicycle, foot, highway, access, service string) (allowedAgents []AgentType) {
-	for agentType := range agentTypesAll {
+	for _, agentType := range sortedAgentTypes {
+		if _, ok := agentTypesAll[agentType]; !ok {
+			continue
+		}
 		included := findIncludedAgent(motorVehicle, motorcar, bicycle, foot, agentType)
 		if included {
 			allowedAgents = append(allowedAgents, agentType)

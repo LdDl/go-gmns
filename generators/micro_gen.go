@@ -66,8 +66,16 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	// Build reverse mapping: macro link ID -> meso link IDs
 	macroLinkMesoLinks := buildMacroToMesoMapping(mesoNet)
 
-	// Process each macro link
-	for _, macroLink := range macroNet.Links {
+	// Process each macro link (sorted for deterministic output)
+	sortedMacroLinkIDs := make([]gmns.LinkID, 0, len(macroNet.Links))
+	for linkID := range macroNet.Links {
+		sortedMacroLinkIDs = append(sortedMacroLinkIDs, linkID)
+	}
+	sort.Slice(sortedMacroLinkIDs, func(i, j int) bool {
+		return sortedMacroLinkIDs[i] < sortedMacroLinkIDs[j]
+	})
+	for _, macroLinkID := range sortedMacroLinkIDs {
+		macroLink := macroNet.Links[macroLinkID]
 		mesoLinkIDs := macroLinkMesoLinks[macroLink.ID]
 		err := processMacroLink(macroNet, mesoNet, microNet, macroLink, mesoLinkIDs, options)
 		if err != nil {
@@ -98,7 +106,16 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 // buildMacroToMesoMapping builds a mapping from macro link IDs to their meso link IDs
 func buildMacroToMesoMapping(mesoNet *meso.Net) map[gmns.LinkID][]gmns.LinkID {
 	result := make(map[gmns.LinkID][]gmns.LinkID)
-	for _, mesoLink := range mesoNet.Links {
+	// Sort meso link IDs for deterministic iteration
+	sortedMesoLinkIDs := make([]gmns.LinkID, 0, len(mesoNet.Links))
+	for linkID := range mesoNet.Links {
+		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
+	}
+	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
+		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+	})
+	for _, mesoLinkID := range sortedMesoLinkIDs {
+		mesoLink := mesoNet.Links[mesoLinkID]
 		macroLinkID := mesoLink.MacroLink()
 		if macroLinkID < 0 {
 			continue // Skip connection links (i.e. movements)
@@ -123,7 +140,17 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 	}
 	temp := make(map[gmns.LinkID]map[int][]nodeWithCell)
 
-	for _, node := range microNet.Nodes {
+	// Sort micro node IDs for deterministic iteration
+	sortedMicroNodeIDs := make([]gmns.NodeID, 0, len(microNet.Nodes))
+	for nodeID := range microNet.Nodes {
+		sortedMicroNodeIDs = append(sortedMicroNodeIDs, nodeID)
+	}
+	sort.Slice(sortedMicroNodeIDs, func(i, j int) bool {
+		return sortedMicroNodeIDs[i] < sortedMicroNodeIDs[j]
+	})
+
+	for _, nodeID := range sortedMicroNodeIDs {
+		node := microNet.Nodes[nodeID]
 		mesoLinkID := node.MesoLink()
 		if mesoLinkID < 0 {
 			continue
@@ -141,10 +168,28 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 		})
 	}
 
-	// Sort by cellIndex and extract nodeIDs
-	for mesoLinkID, lanes := range temp {
+	// Sort by cellIndex and extract nodeIDs (sort keys for deterministic iteration)
+	sortedMesoLinkIDs := make([]gmns.LinkID, 0, len(temp))
+	for mesoLinkID := range temp {
+		sortedMesoLinkIDs = append(sortedMesoLinkIDs, mesoLinkID)
+	}
+	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
+		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+	})
+
+	for _, mesoLinkID := range sortedMesoLinkIDs {
+		lanes := temp[mesoLinkID]
 		result[mesoLinkID] = make(map[int][]gmns.NodeID)
-		for laneID, nodes := range lanes {
+
+		// Sort lane IDs for deterministic iteration
+		sortedLaneIDs := make([]int, 0, len(lanes))
+		for laneID := range lanes {
+			sortedLaneIDs = append(sortedLaneIDs, laneID)
+		}
+		sort.Ints(sortedLaneIDs)
+
+		for _, laneID := range sortedLaneIDs {
+			nodes := lanes[laneID]
 			sort.Slice(nodes, func(i, j int) bool {
 				return nodes[i].cellIndex < nodes[j].cellIndex
 			})
@@ -357,7 +402,15 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 	macroSourceNode := macroNet.Nodes[macroLink.SourceNode()]
 
 	if lanes, ok := localMapping[firstMesoLinkID]; ok {
-		for laneID, nodeIDs := range lanes {
+		// Sort lane IDs for deterministic iteration
+		sortedLaneIDs := make([]int, 0, len(lanes))
+		for laneID := range lanes {
+			sortedLaneIDs = append(sortedLaneIDs, laneID)
+		}
+		sort.Ints(sortedLaneIDs)
+
+		for _, laneID := range sortedLaneIDs {
+			nodeIDs := lanes[laneID]
 			if laneID > 0 || (hasBike && laneID == -1) || (hasWalk && laneID == -2) {
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[0]]; ok {
@@ -374,7 +427,15 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 	macroTargetNode := macroNet.Nodes[macroLink.TargetNode()]
 
 	if lanes, ok := localMapping[lastMesoLinkID]; ok {
-		for laneID, nodeIDs := range lanes {
+		// Sort lane IDs for deterministic iteration
+		sortedLaneIDs := make([]int, 0, len(lanes))
+		for laneID := range lanes {
+			sortedLaneIDs = append(sortedLaneIDs, laneID)
+		}
+		sort.Ints(sortedLaneIDs)
+
+		for _, laneID := range sortedLaneIDs {
+			nodeIDs := lanes[laneID]
 			if laneID > 0 || (hasBike && laneID == -1) || (hasWalk && laneID == -2) {
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[len(nodeIDs)-1]]; ok {
@@ -586,7 +647,17 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 	// Build global mapping from all micro nodes
 	globalMapping := buildMesoMicroMapping(microNet)
 
-	for _, mesoLink := range mesoNet.Links {
+	// Sort meso link IDs for deterministic iteration
+	sortedMesoLinkIDs := make([]gmns.LinkID, 0, len(mesoNet.Links))
+	for linkID := range mesoNet.Links {
+		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
+	}
+	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
+		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+	})
+
+	for _, mesoLinkID := range sortedMesoLinkIDs {
+		mesoLink := mesoNet.Links[mesoLinkID]
 		// Process only movement meso links
 		if mesoLink.Movement() < 0 {
 			continue
@@ -771,14 +842,31 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 	// Build global mapping of meso link to micro nodes per lane
 	globalMapping := buildMesoMicroMapping(microNet)
 
-	// Group movements by macro node
+	// Group movements by macro node (sorted for deterministic iteration)
 	movementsByNode := make(map[gmns.NodeID][]*movement.Movement)
-	for _, mvmt := range movements {
+	sortedMvmtIDs := make([]gmns.MovementID, 0, len(movements))
+	for mvmtID := range movements {
+		sortedMvmtIDs = append(sortedMvmtIDs, mvmtID)
+	}
+	sort.Slice(sortedMvmtIDs, func(i, j int) bool {
+		return sortedMvmtIDs[i] < sortedMvmtIDs[j]
+	})
+	for _, mvmtID := range sortedMvmtIDs {
+		mvmt := movements[mvmtID]
 		movementsByNode[mvmt.MacroNode()] = append(movementsByNode[mvmt.MacroNode()], mvmt)
 	}
 
-	// Process each macro node
-	for _, macroNode := range macroNet.Nodes {
+	// Process each macro node (sorted for deterministic iteration)
+	sortedMacroNodeIDs := make([]gmns.NodeID, 0, len(macroNet.Nodes))
+	for nodeID := range macroNet.Nodes {
+		sortedMacroNodeIDs = append(sortedMacroNodeIDs, nodeID)
+	}
+	sort.Slice(sortedMacroNodeIDs, func(i, j int) bool {
+		return sortedMacroNodeIDs[i] < sortedMacroNodeIDs[j]
+	})
+
+	for _, macroNodeID := range sortedMacroNodeIDs {
+		macroNode := macroNet.Nodes[macroNodeID]
 		// Skip nodes where movements are needed (intersections)
 		if flags.NodesNeedMovement[macroNode.ID] {
 			continue
