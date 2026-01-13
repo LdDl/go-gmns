@@ -327,6 +327,72 @@ The microscopic network provides cell-based representation for detailed simulati
 | `length_meters` | float64 | Cell length in meters |
 | `geom` | WKT | LineString geometry |
 
+### Entity relationships
+
+```mermaid
+erDiagram
+    MacroNode ||--o{ MacroLink : "source/target"
+    MacroNode ||--o{ Movement : "occurs at"
+    MacroLink ||--o{ Movement : "in/out link"
+    MacroLink ||--o{ MesoLink : "expands to"
+    MacroNode ||--o| MesoNode : "maps to"
+    MesoNode ||--o{ MesoLink : "source/target"
+    Movement ||--o| MesoLink : "connection link"
+    MesoLink ||--o{ MicroNode : "contains"
+    MesoLink ||--o{ MicroLink : "decomposes to"
+    MicroNode ||--o{ MicroLink : "source/target"
+
+    MacroNode {
+        int64 id PK
+        int64 osm_node_id
+        string control_type
+        string boundary_type
+    }
+    MacroLink {
+        int64 id PK
+        int64 source_node FK
+        int64 target_node FK
+        int64 osm_way_id
+        int lanes
+        string link_type
+    }
+    Movement {
+        int64 id PK
+        int64 node_id FK
+        int64 in_link_id FK
+        int64 out_link_id FK
+        string type
+        string mvmt_txt_id
+    }
+    MesoNode {
+        int64 id PK
+        int64 macro_node_id FK
+        int64 macro_link_id FK
+        string boundary_type
+    }
+    MesoLink {
+        int64 id PK
+        int64 source_node FK
+        int64 target_node FK
+        int64 macro_link_id FK
+        int64 movement_id FK
+        int lanes_num
+    }
+    MicroNode {
+        int64 id PK
+        int64 meso_link_id FK
+        int lane_id
+        int cell_index
+    }
+    MicroLink {
+        int64 id PK
+        int64 source_node FK
+        int64 target_node FK
+        int64 meso_link_id FK
+        string cell_type
+    }
+```
+
 ## Generation process
 
 ### Step 1: Macro network
