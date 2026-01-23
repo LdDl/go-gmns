@@ -52,18 +52,21 @@ var (
 		LINK_AEROWAY:       true,
 	}
 	defaultLanesByLinkType = map[LinkType]int{
-		LINK_MOTORWAY:     4,
-		LINK_TRUNK:        3,
-		LINK_PRIMARY:      3,
-		LINK_SECONDARY:    2,
-		LINK_TERTIARY:     2,
-		LINK_RESIDENTIAL:  1,
-		LINK_SERVICE:      1,
-		LINK_CYCLEWAY:     1,
-		LINK_FOOTWAY:      1,
-		LINK_TRACK:        1,
-		LINK_UNCLASSIFIED: 1,
-		LINK_CONNECTOR:    2,
+		LINK_MOTORWAY:      4,
+		LINK_TRUNK:         3,
+		LINK_PRIMARY:       3,
+		LINK_SECONDARY:     2,
+		LINK_TERTIARY:      2,
+		LINK_RESIDENTIAL:   1,
+		LINK_LIVING_STREET: 1,
+		LINK_SERVICE:       1,
+		LINK_CYCLEWAY:      1,
+		LINK_FOOTWAY:       1,
+		LINK_TRACK:         1,
+		LINK_UNCLASSIFIED:  1,
+		LINK_CONNECTOR:     2,
+		LINK_RAILWAY:       1,
+		LINK_AEROWAY:       1,
 	}
 	defaultSpeedByLinkType = map[LinkType]float64{
 		LINK_MOTORWAY:     120,
@@ -140,7 +143,7 @@ func NewLanesDefault(lt LinkType) int {
 	if defaultLanes, ok := defaultLanesByLinkType[lt]; ok {
 		return defaultLanes
 	}
-	return -1
+	return 1 // Fallback to 1 lane for unknown link types
 }
 
 func FindPriorLinkType(linkTypes []LinkType) LinkType {

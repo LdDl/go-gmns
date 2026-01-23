@@ -115,6 +115,10 @@ func GenerateIntersectionsConnections(incomingLink *Link, outcomingLinks []*Link
 	// Evaluate lanes connections
 	connections := make([][]ConnectionPair, len(outcomingLinksSorted))
 	outcomingLanes := incomingLink.GetOutcomingLanes()
+	// Ensure we have at least 1 lane
+	if outcomingLanes < 1 {
+		outcomingLanes = 1
+	}
 	if outcomingLanes == 1 {
 		leftLink := outcomingLinksSorted[0]
 		connections[indicesMap[leftLink.ID]] = []ConnectionPair{

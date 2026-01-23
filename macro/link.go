@@ -78,20 +78,30 @@ func (link *Link) MaxLanes() int {
 }
 
 // GetIncomingLanes returns number of incoming lanes. The first value in lanes list is that number.
+// Returns at least 1 to avoid negative index calculations in lane connections.
 func (link *Link) GetIncomingLanes() int {
 	if len(link.lanesInfo.LanesList) == 0 {
-		return 0
+		return 1
 	}
-	return link.lanesInfo.LanesList[0]
+	lanes := link.lanesInfo.LanesList[0]
+	if lanes < 1 {
+		return 1
+	}
+	return lanes
 }
 
-// GetOutcomingLanes returns number of outcoming lanes. The last value in lanes list is that number. Outputs "-1" in case of no lanes at all.
+// GetOutcomingLanes returns number of outcoming lanes. The last value in lanes list is that number.
+// Returns at least 1 to avoid negative index calculations in lane connections.
 func (link *Link) GetOutcomingLanes() int {
 	idx := len(link.lanesInfo.LanesList) - 1
 	if idx < 0 {
-		return -1
+		return 1
 	}
-	return link.lanesInfo.LanesList[idx]
+	lanes := link.lanesInfo.LanesList[idx]
+	if lanes < 1 {
+		return 1
+	}
+	return lanes
 }
 
 // GetOutcomingLaneIndices returns slice of the lane indices (for lane changes)
