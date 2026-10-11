@@ -3,6 +3,8 @@
 ## About
 Go implementation of basic data in GMNS (General Modeling Network Specification). Contains data structures and generators utils for multi-resolution transportation networks.
 
+The target specification for incremental alignment is [GMNS v0.97 by the Zephyr Foundation and Volpe/FHWA](https://github.com/zephyr-data-specs/GMNS/tree/v0.97/spec).
+
 This package provides:
 - Data structures for macroscopic, mesoscopic, and microscopic networks
 - Generators for meso and micro networks from macro networks

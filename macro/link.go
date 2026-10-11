@@ -13,6 +13,8 @@ type Link struct {
 	name               string
 	geom               orb.LineString
 	geomEuclidean      orb.LineString
+	geometryID         *gmns.GeometryID
+	dirFlag            *gmns.DirectionFlag
 	allowedAgentTypes  []types.AgentType
 	lengthMeters       float64
 	freeSpeed          float64
@@ -134,6 +136,25 @@ func (link *Link) GeomEuclidean() orb.LineString {
 	return link.geomEuclidean
 }
 
+// GeometryID returns the optional reference to the GMNS geometry table.
+// The boolean distinguishes an absent reference from geometry ID zero.
+func (link *Link) GeometryID() (gmns.GeometryID, bool) {
+	if link.geometryID == nil {
+		return 0, false
+	}
+	return *link.geometryID, true
+}
+
+// DirFlag returns the optional GMNS shape orientation: 1 follows the link's
+// endpoints, -1 opposes them, and 0 means undirected or no geometry information.
+// An absent flag is distinct from an explicitly supplied zero.
+func (link *Link) DirFlag() (gmns.DirectionFlag, bool) {
+	if link.dirFlag == nil {
+		return gmns.DIR_FLAG_NONE, false
+	}
+	return *link.dirFlag, true
+}
+
 // AllowedAgentTypes returns set of allowed agent types. Warning: returning object is a slice.
 func (link *Link) AllowedAgentTypes() []types.AgentType {
 	return link.allowedAgentTypes
@@ -239,6 +260,24 @@ func WithLineGeom(geom orb.LineString) func(*Link) {
 func WithLineGeomEuclidean(geomEuclidean orb.LineString) func(*Link) {
 	return func(link *Link) {
 		link.geomEuclidean = geomEuclidean
+	}
+}
+
+// WithGeometryID sets a reference to a shared shape without changing Geom().
+func WithGeometryID(geometryID gmns.GeometryID) func(*Link) {
+	return func(link *Link) {
+		value := geometryID
+		link.geometryID = &value
+	}
+}
+
+// WithDirFlag sets GMNS shape orientation without reversing Geom(). For a
+// shared canonical shape opposite directed links normally use 1 and -1.
+// Existing per-link geometries already follow travel order and use 1.
+func WithDirFlag(dirFlag gmns.DirectionFlag) func(*Link) {
+	return func(link *Link) {
+		value := dirFlag
+		link.dirFlag = &value
 	}
 }
 
