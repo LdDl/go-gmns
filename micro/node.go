@@ -9,6 +9,9 @@ import (
 
 // Node represents a microscopic network node (cell vertex)
 type Node struct {
+	name     string
+	nodeType string
+
 	ID gmns.NodeID
 
 	geom          orb.Point
@@ -209,4 +212,28 @@ func (node *Node) SetDownstreamEnd(isDownstreamEnd bool) {
 // SetZoneID sets the zone identifier
 func (node *Node) SetZoneID(zoneID gmns.NodeID) {
 	node.zoneID = zoneID
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
+	}
+}
+
+// Name returns the supplied node name, or an empty string when not supplied.
+func (node *Node) Name() string {
+	return node.name
+}
+
+// WithNodeName sets the node name; an empty string clears the value.
+func WithNodeName(name string) func(*Node) {
+	return func(node *Node) {
+		node.name = name
+	}
 }

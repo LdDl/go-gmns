@@ -9,6 +9,8 @@ import (
 
 // Link represents a microscopic network link (cell)
 type Link struct {
+	name string
+
 	ID gmns.LinkID
 
 	geom          orb.LineString
@@ -280,5 +282,17 @@ func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Link) {
 	return func(link *Link) {
 		link.allowedAgentTypes = make([]types.AgentType, len(allowedAgentTypes))
 		copy(link.allowedAgentTypes, allowedAgentTypes)
+	}
+}
+
+// Name returns the supplied link name, or an empty string when not supplied.
+func (link *Link) Name() string {
+	return link.name
+}
+
+// WithLinkName sets the link name; an empty string clears the value.
+func WithLinkName(name string) func(*Link) {
+	return func(link *Link) {
+		link.name = name
 	}
 }

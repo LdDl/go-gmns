@@ -9,6 +9,7 @@ import (
 // GeoFeature returns GeoJSON LineString feature for the given link
 func (link *Link) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(link.Geom())
+	f.Properties["name"] = link.Name()
 	f.ID = link.ID
 	f.Properties["id"] = link.ID
 	f.Properties["source_node"] = link.SourceNode()
@@ -38,6 +39,8 @@ func (link *Link) GeoFeature() *geojson.Feature {
 // GeoFeature returns GeoJSON Point feature for the given node
 func (node *Node) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(node.Geom())
+	f.Properties["node_type"] = node.NodeType()
+	f.Properties["name"] = node.Name()
 	f.ID = node.ID
 	f.Properties["id"] = node.ID
 	f.Properties["meso_link_id"] = node.MesoLink()
