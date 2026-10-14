@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/LdDl/go-gmns/gmns"
-	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/LdDl/go-gmns/macro"
 	"github.com/LdDl/go-gmns/movement"
 	"github.com/LdDl/go-gmns/utils/geomath"
@@ -52,8 +51,8 @@ func ComputeMovementFlags(macroNet *macro.Net, movements movement.MovementsStora
 
 	// Process each macro node
 	for _, macroNode := range macroNet.Nodes {
-		// Skip signal-controlled nodes
-		if macroNode.ControlType() == types.CONTROL_TYPE_IS_SIGNAL {
+		// Preserve explicit junctions with signals, stop or yield control.
+		if macroNode.ControlType().HasControl() {
 			continue
 		}
 

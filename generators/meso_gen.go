@@ -195,7 +195,8 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 
 	for _, nodeID := range sortedMacroNodeIDsMain {
 		macroNode := macroNet.Nodes[nodeID]
-		if macroNode.ControlType() == types.CONTROL_TYPE_IS_SIGNAL {
+		// Preserve explicit junctions with signals, stop or yield control.
+		if macroNode.ControlType().HasControl() {
 			continue
 		}
 		incomingMacroLinks := macroNode.IncomingLinks()

@@ -160,7 +160,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `node_type` | string | What the node represents; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `osm_node_id` | int64 | Original OpenStreetMap node ID |
-| `control_type` | string | Traffic control type at node: `none`, `yield`, `stop`, `signal`, `signal_minor_stop`, `signal_minor_yield` |
+| `control_type` | string | Traffic control: `no_control`, `yield`, `stop`, `stop_2_way`, `stop_4_way`, `signal_with_RTOR`, `signal`; existing default is `common` |
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `activity_type` | string | Activity type: `none`, `poi`, `link` |
 | `activity_link_type` | string | If activity_type=link, the predominant link type at this node |
@@ -229,7 +229,7 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 | `lanes_num` | int | Number of lanes for this movement |
 | `from_osm_node_id` | int64 | Source OSM node of incoming link |
 | `to_osm_node_id` | int64 | Target OSM node of outgoing link |
-| `type` | string | Movement direction: `thru`, `left`, `right`, `uturn` |
+| `type` | string | Movement type: `thru`, `left`, `right`, `uturn`, `merge`, `diverge`; `undefined` when unspecified |
 | `penalty` | optional float64 | Turn penalty in seconds (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity for the whole movement in PCE/hour (`null` in GeoJSON if not set) |
 | `control_type` | string | Traffic control type |
@@ -471,6 +471,8 @@ The meso network expands macro network to lane-level:
 2. Meso nodes are created at intersections and mid-link lane transitions
 3. **Connection links** are added at intersections based on movements
 4. Offset geometry is computed for each direction
+
+Nodes with explicit stop, yield or signal control retain movement connectors during meso/micro generation. Control categories are preserved without calculating delays or implementing right-turn-on-red rules. Supplied `merge`/`diverge` movement types are supported; automatic type classification still uses geometry angles.
 
 ### Step 4: Micro network
 

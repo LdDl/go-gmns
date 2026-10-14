@@ -39,7 +39,7 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f.Properties["lanes_num"] = mvmt.LanesNum()
 	f.Properties["from_osm_node_id"] = mvmt.OSMNodeSource()
 	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTarget()
-	f.Properties["type"] = mvmt.Type()
+	f.Properties["type"] = mvmt.Type().String()
 	penalty, hasPenalty := mvmt.Penalty()
 	f.Properties["penalty"] = nil
 	if hasPenalty {

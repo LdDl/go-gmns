@@ -1,7 +1,7 @@
 package movement
 
 var (
-	movementsTypes       = []string{"undefined", "thru", "right", "left", "uturn"}
+	movementsTypes       = []string{"undefined", "thru", "right", "left", "uturn", "merge", "diverge"}
 	movementsShortTypes  = []string{"undefined", "T", "R", "L", "U"}
 	directionTypes       = []string{"undefined", "SB", "EB", "NB", "WB"}
 	movementsTextIDs     = []string{"undefined", "SBT", "SBR", "SBL", "SBU", "EBT", "EBR", "EBL", "EBU", "NBT", "NBR", "NBL", "NBU", "WBT", "WBR", "WBL", "WBU"}
@@ -34,10 +34,12 @@ const (
 	MOVEMENT_TYPE_RIGHT
 	MOVEMENT_TYPE_LEFT
 	MOVEMENT_TYPE_U_TURN
+	MOVEMENT_TYPE_MERGE
+	MOVEMENT_TYPE_DIVERGE
 )
 
-func (iotaIdx MovementType) String() string {
-	return movementsTypes[iotaIdx]
+func (movementType MovementType) String() string {
+	return movementsTypes[movementType]
 }
 
 // MovementShortType is just type alias for the movement type in shorten form
