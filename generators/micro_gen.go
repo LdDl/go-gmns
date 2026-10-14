@@ -60,6 +60,10 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	if err != nil {
 		return nil, err
 	}
+	err = requireMesoRoadLengths(macroNet, mesoNet)
+	if err != nil {
+		return nil, err
+	}
 
 	options := DefaultMicroGenOptions()
 	if len(opts) > 0 {
@@ -272,12 +276,16 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 
 // createMicroNodesForMesoLink creates micro nodes for a single meso link
 func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, originalLanesNum float64, hasBike, hasWalk bool, opts MicroGenOptions, localMapping mesoMicroMapping) error {
+	lengthMeters, err := requiredMesoLength(mesoLink)
+	if err != nil {
+		return err
+	}
 	lanesChange := mesoLink.LanesChange()
 	laneChangesLeft := float64(lanesChange[0])
 	lanesNumOffset := -1 * (originalLanesNum/2 - 0.5 + laneChangesLeft)
 
 	// Calculate number of cells
-	cellsNum := int(math.Max(1.0, math.Round(mesoLink.LengthMeters()/opts.CellLength)))
+	cellsNum := int(math.Max(1.0, math.Round(lengthMeters/opts.CellLength)))
 
 	// Generate lane geometries with offset
 	laneGeometries := make([]orb.LineString, mesoLink.LanesNum())
@@ -330,7 +338,7 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(laneGeometries[laneIdx], distance)
 			pointEuc := geomath.PointToEuclidean(point)
 
@@ -356,7 +364,7 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(bikeGeometry, distance)
 			pointEuc := geomath.PointToEuclidean(point)
 
@@ -382,7 +390,7 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(walkGeometry, distance)
 			pointEuc := geomath.PointToEuclidean(point)
 

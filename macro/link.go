@@ -29,7 +29,7 @@ type Link struct {
 	geometryID         *gmns.GeometryID
 	dirFlag            *gmns.DirectionFlag
 	allowedAgentTypes  []types.AgentType
-	lengthMeters       float64
+	lengthMeters       *float64
 	freeSpeed          *float64
 	maxSpeed           float64
 	ID                 gmns.LinkID
@@ -56,7 +56,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		geom:               orb.LineString{},
 		geomEuclidean:      orb.LineString{},
 		allowedAgentTypes:  []types.AgentType{},
-		lengthMeters:       -1,
 		maxSpeed:           -1,
 		ID:                 id,
 		sourceNodeID:       sourceNodeID,
@@ -172,9 +171,12 @@ func (link *Link) AllowedAgentTypes() []types.AgentType {
 	return link.allowedAgentTypes
 }
 
-// LengthMeters returns length of the underlying geometry [WGS84]. Outputs "-1" if it was not set.
-func (link *Link) LengthMeters() float64 {
-	return link.lengthMeters
+// LengthMeters returns the supplied length in meters and whether it is set.
+func (link *Link) LengthMeters() (float64, bool) {
+	if link.lengthMeters == nil {
+		return 0, false
+	}
+	return *link.lengthMeters, true
 }
 
 // FreeSpeed returns the supplied free-flow speed in km/h and whether it is set.
@@ -310,7 +312,8 @@ func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Link) {
 // WithLengthMeters sets underlying geometry [WGS84] length in meters. Warning: it should be called explicitly after setting geometry [WGS84]
 func WithLengthMeters(lengthMeters float64) func(*Link) {
 	return func(link *Link) {
-		link.lengthMeters = lengthMeters
+		value := lengthMeters
+		link.lengthMeters = &value
 	}
 }
 

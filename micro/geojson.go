@@ -60,7 +60,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	if hasCapacity {
 		f.Properties["capacity"] = capacity
 	}
-	f.Properties["length_meters"] = link.LengthMeters()
+	lengthMeters, hasLength := link.LengthMeters()
+	f.Properties["length_meters"] = nil
+	if hasLength {
+		f.Properties["length_meters"] = lengthMeters
+	}
 	return f
 }
 

@@ -32,7 +32,7 @@ type Link struct {
 	lanesNum      int
 	lanesChange   [2]int
 
-	lengthMeters float64
+	lengthMeters *float64
 
 	sourceNodeID gmns.NodeID
 	targetNodeID gmns.NodeID
@@ -70,7 +70,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		geomEuclidean: orb.LineString{},
 		lanesNum:      -1,
 		lanesChange:   [2]int{0, 0},
-		lengthMeters:  -1,
 		sourceNodeID:  sourceNodeID,
 		targetNodeID:  targetNodeID,
 		segmentIdx:    0,
@@ -131,9 +130,12 @@ func (link *Link) LanesChange() [2]int {
 	return link.lanesChange
 }
 
-// LengthMeters returns length of the underlying geometry [WGS84]. Outputs "-1" if it was not set.
-func (link *Link) LengthMeters() float64 {
-	return link.lengthMeters
+// LengthMeters returns the supplied length in meters and whether it is set.
+func (link *Link) LengthMeters() (float64, bool) {
+	if link.lengthMeters == nil {
+		return 0, false
+	}
+	return *link.lengthMeters, true
 }
 
 // SourceNode returns identifier of source node. Outputs "-1" if it was not set.
@@ -258,7 +260,8 @@ func WithLanesChange(lanesChange [2]int) func(*Link) {
 // WithLengthMeters sets underlying geometry [WGS84] length in meters. Warning: it should be called explicitly after setting geometry [WGS84]
 func WithLengthMeters(lengthMeters float64) func(*Link) {
 	return func(link *Link) {
-		link.lengthMeters = lengthMeters
+		value := lengthMeters
+		link.lengthMeters = &value
 	}
 }
 

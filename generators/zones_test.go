@@ -66,7 +66,7 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			network := controlTestNetwork(types.CONTROL_TYPE_IS_SIGNAL)
+			network := controlTestNetwork(t, types.CONTROL_TYPE_IS_SIGNAL)
 			for nodeID, expected := range testCase.zones {
 				macro.WithZoneID(expected.id)(network.Nodes[nodeID])
 			}
@@ -78,7 +78,8 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 				})(link)
 			}
 			firstLink := network.Links[10]
-			length := firstLink.LengthMeters()
+			length, hasLength := firstLink.LengthMeters()
+			assert.True(t, hasLength)
 			macro.WithLanesInfo(macro.LanesInfo{
 				LanesList: []int{2, 2},
 				LanesChange: [][2]int{

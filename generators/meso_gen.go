@@ -70,6 +70,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	if err != nil {
 		return nil, err
 	}
+	err = requireMacroLinkLengths(macroNet)
+	if err != nil {
+		return nil, err
+	}
 
 	if VERBOSE {
 		log.Info().Str("scope", "gen_meso").Msg("Preparing mesoscopic network")
@@ -153,9 +157,11 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		}
 		// Keep rescaled breakpoints separate from the source link's slice.
 		sourceChangePoints := macroLinkProcess.lanesInfo.LanesChangePoints
+		// Required source lengths were validated before geometry preparation.
+		lengthMeters, _ := macroLink.LengthMeters()
 		macroLinkProcess.lanesInfo.LanesChangePoints = make([]float64, len(sourceChangePoints))
 		for i, item := range sourceChangePoints {
-			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / macroLink.LengthMeters()) * macroLinkProcess.lengthMetersOffset
+			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / lengthMeters) * macroLinkProcess.lengthMetersOffset
 		}
 	}
 	if VERBOSE {

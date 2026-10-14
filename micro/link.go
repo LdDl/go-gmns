@@ -31,7 +31,7 @@ type Link struct {
 	geometryID    *gmns.GeometryID
 	dirFlag       *gmns.DirectionFlag
 
-	lengthMeters float64
+	lengthMeters *float64
 
 	sourceNodeID gmns.NodeID
 	targetNodeID gmns.NodeID
@@ -65,7 +65,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		ID:                    id,
 		geom:                  orb.LineString{},
 		geomEuclidean:         orb.LineString{},
-		lengthMeters:          -1,
 		sourceNodeID:          sourceNodeID,
 		targetNodeID:          targetNodeID,
 		mesoLinkID:            -1,
@@ -115,9 +114,12 @@ func (link *Link) DirFlag() (gmns.DirectionFlag, bool) {
 	return *link.dirFlag, true
 }
 
-// LengthMeters returns length of the underlying geometry. Outputs "-1" if not set.
-func (link *Link) LengthMeters() float64 {
-	return link.lengthMeters
+// LengthMeters returns the supplied length in meters and whether it is set.
+func (link *Link) LengthMeters() (float64, bool) {
+	if link.lengthMeters == nil {
+		return 0, false
+	}
+	return *link.lengthMeters, true
 }
 
 // SourceNode returns identifier of source node
@@ -228,7 +230,8 @@ func WithLineGeomEuclidean(geomEuclidean orb.LineString) func(*Link) {
 // WithLengthMeters sets length in meters
 func WithLengthMeters(lengthMeters float64) func(*Link) {
 	return func(link *Link) {
-		link.lengthMeters = lengthMeters
+		value := lengthMeters
+		link.lengthMeters = &value
 	}
 }
 

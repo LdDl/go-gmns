@@ -60,7 +60,7 @@ func TestControlSurvivesGeneration(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			network := controlTestNetwork(testCase.controlType)
+			network := controlTestNetwork(t, testCase.controlType)
 			assert.Equal(t, testCase.name, network.Nodes[2].GeoFeature().Properties["control_type"])
 			movements, err := GenerateMovements(network)
 			assert.NoError(t, err)
@@ -122,7 +122,8 @@ func TestControlSurvivesGeneration(t *testing.T) {
 	}
 }
 
-func controlTestNetwork(controlType types.ControlType) *macro.Net {
+func controlTestNetwork(t *testing.T, controlType types.ControlType) *macro.Net {
+	t.Helper()
 	points := []orb.Point{
 		{30, 60},
 		{30.002, 60},
@@ -151,7 +152,12 @@ func controlTestNetwork(controlType types.ControlType) *macro.Net {
 		macro.WithLineGeomEuclidean(geomath.LineToEuclidean(link.Geom()))(link)
 		macro.WithLengthMeters(geo.LengthHaversine(link.Geom()))(link)
 		macro.WithLanesNum(2)(link)
-		macro.WithLanesInfo(macro.NewLanesInfo(link))(link)
+		laneInfo, err := macro.NewLanesInfo(link)
+		assert.NoError(t, err)
+		if err != nil {
+			t.FailNow()
+		}
+		macro.WithLanesInfo(laneInfo)(link)
 		macro.WithFreeSpeed(40)(link)
 		macro.WithCapacity(1800)(link)
 		macro.WithAllowedAgentTypes([]types.AgentType{types.AGENT_AUTO})(link)

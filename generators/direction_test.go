@@ -74,7 +74,12 @@ func TestDirectedGenerationPipeline(t *testing.T) {
 		macro.WithCapacity(1800),
 		macro.WithAllowedAgentTypes([]types.AgentType{types.AGENT_AUTO}),
 	)
-	macro.WithLanesInfo(macro.NewLanesInfo(link))(link)
+	laneInfo, err := macro.NewLanesInfo(link)
+	assert.NoError(t, err)
+	if err != nil {
+		return
+	}
+	macro.WithLanesInfo(laneInfo)(link)
 	net.Links[10] = link
 	movements, err := GenerateMovements(net)
 	assert.NoError(t, err)

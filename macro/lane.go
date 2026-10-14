@@ -1,11 +1,11 @@
 package macro
 
 import (
-	"sort"
+	"fmt"
+	"math"
 )
 
 const (
-	resolution = 5.0
 	// Default lane width
 	LANE_WIDTH = 3.5
 )
@@ -17,38 +17,26 @@ type LanesInfo struct {
 	LanesChangePoints []float64
 }
 
-// NewLanesInfo creates pointer to the new LanesInfo
-func NewLanesInfo(link *Link) LanesInfo {
+// NewLanesInfo prepares uniform lane information from a supplied positive finite length.
+func NewLanesInfo(link *Link) (LanesInfo, error) {
+	if link == nil {
+		return LanesInfo{}, fmt.Errorf("cannot prepare lane information: link is nil")
+	}
+	lengthMeters, hasLength := link.LengthMeters()
+	if !hasLength {
+		return LanesInfo{}, fmt.Errorf("macro link %d: length is required to prepare lane information", link.ID)
+	}
+	if lengthMeters <= 0 || math.IsNaN(lengthMeters) || math.IsInf(lengthMeters, 0) {
+		return LanesInfo{}, fmt.Errorf("macro link %d: lane preparation requires a positive finite length, got %g", link.ID, lengthMeters)
+	}
 	lanesInfo := LanesInfo{
-		LanesList:         make([]int, 0),
-		LanesChange:       make([][2]int, 0),
-		LanesChangePoints: make([]float64, 0),
+		LanesList: []int{link.LanesNum()},
+		LanesChange: [][2]int{
+			{0, 0},
+		},
+		LanesChangePoints: []float64{0, lengthMeters},
 	}
-	lengthMeters := link.LengthMeters()
-	if lengthMeters < resolution {
-		lanesInfo.LanesChangePoints = []float64{0.0, lengthMeters}
-	} else {
-		lanesChangePointsTemp := []float64{0.0, lengthMeters}
-		for len(lanesChangePointsTemp) != 0 {
-			target := lanesChangePointsTemp[0]
-			remove := make(map[int]struct{})
-			for idx, point := range lanesChangePointsTemp {
-				if target-resolution <= point && point <= target+resolution {
-					remove[idx] = struct{}{}
-				}
-			}
-			lanesInfo.LanesChangePoints = append(lanesInfo.LanesChangePoints, target)
-			for idx := range remove {
-				lanesChangePointsTemp = append(lanesChangePointsTemp[:idx], lanesChangePointsTemp[idx+1:]...)
-			}
-		}
-		sort.Float64s(lanesInfo.LanesChangePoints)
-	}
-	for i := 0; i < len(lanesInfo.LanesChangePoints)-1; i++ {
-		lanesInfo.LanesList = append(lanesInfo.LanesList, link.LanesNum())
-		lanesInfo.LanesChange = append(lanesInfo.LanesChange, [2]int{0.0, 0.0})
-	}
-	return lanesInfo
+	return lanesInfo, nil
 }
 
 func laneIndices(lanes int, lanesChangeLeft int, lanesChangeRight int) []int {

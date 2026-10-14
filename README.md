@@ -202,13 +202,15 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `max_speed` | float64 | Maximum speed limit (km/h) |
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
-| `length_meters` | float64 | Link length in meters |
+| `length_meters` | optional float64 | Supplied link length in meters (`null` in GeoJSON if not set) |
 | `name` | string | Road name from OSM |
 | `geom` | WKT | LineString geometry in WKT format |
 
 All three link models can store an optional shared geometry ID and direction flag independently of the travel-oriented line. Shared geometry table export for meso/micro remains pending.
 
 Link `Capacity()` and `FreeSpeed()` now return `(float64, bool)`, and `WithCapacity` accepts `float64`. Omit the option for missing data; passing `-1` stores that number. Generators preserve absence, explicit zero and fractional capacity without scaling by lane count. Converter CSV migration remains pending.
+
+`LengthMeters()` now returns `(float64, bool)` and `NewLanesInfo` returns `(LanesInfo, error)`. Zero remains a supplied length; lane preparation and meso generation require positive finite macro lengths, while micro cell generation requires positive finite lengths on its meso road segments. Export does not calculate missing lengths.
 
 Bicycle/pedestrian facilities and parking describe infrastructure independently of allowed agents. Suggested category constants are available in `gmns/types`; custom strings are supported. Empty values, `none` and `unknown` remain distinct. See the note in the micro link section for more details about thouse specific fields.
 
@@ -320,7 +322,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
 | `allowed_agent_types` | string | Comma-separated allowed agents |
-| `length_meters` | float64 | Link length in meters |
+| `length_meters` | optional float64 | Supplied link length in meters (`null` in GeoJSON if not set) |
 | `geom` | WKT | Offset LineString geometry |
 
 ### Microscopic network
@@ -377,7 +379,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `allowed_agent_types` | string | Comma-separated allowed agents |
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
-| `length_meters` | float64 | Cell length in meters |
+| `length_meters` | optional float64 | Cell length in meters (`null` in GeoJSON if not set) |
 | `geom` | WKT | LineString geometry |
 
 ### Entity relationships

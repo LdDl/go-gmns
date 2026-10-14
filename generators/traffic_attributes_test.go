@@ -81,17 +81,19 @@ func TestTrafficAttributesSurviveGeneration(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			network := controlTestNetwork(types.CONTROL_TYPE_IS_SIGNAL)
+			network := controlTestNetwork(t, types.CONTROL_TYPE_IS_SIGNAL)
 			expectedByMacroLink := map[gmns.LinkID]trafficValues{
 				10: testCase.incoming,
 				11: testCase.outgoing,
 			}
 			for linkID, expected := range expectedByMacroLink {
 				original := network.Links[linkID]
+				lengthMeters, hasLength := original.LengthMeters()
+				assert.True(t, hasLength)
 				link := macro.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 					macro.WithLineGeom(original.Geom().Clone()),
 					macro.WithLineGeomEuclidean(original.GeomEuclidean().Clone()),
-					macro.WithLengthMeters(original.LengthMeters()),
+					macro.WithLengthMeters(lengthMeters),
 					macro.WithLanesNum(original.LanesNum()),
 					macro.WithLanesInfo(original.LanesInfo()),
 					macro.WithAllowedAgentTypes(original.AllowedAgentTypes()),
