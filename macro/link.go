@@ -9,6 +9,8 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	parentLinkID *gmns.LinkID
+
 	lanesInfo          LanesInfo
 	name               string
 	geom               orb.LineString
@@ -391,5 +393,23 @@ func WithLinkControlType(controlType types.ControlType) func(*Link) {
 func WithBidirectionalSource(wasBidirectional bool) func(*Link) {
 	return func(link *Link) {
 		link.wasBidirectional = wasBidirectional
+	}
+}
+
+// ParentLink returns the optional associated link ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (link *Link) ParentLink() (gmns.LinkID, bool) {
+	if link.parentLinkID == nil {
+		return 0, false
+	}
+	return *link.parentLinkID, true
+}
+
+// WithParentLinkID sets an associated link reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentLinkID(parentLinkID gmns.LinkID) func(*Link) {
+	return func(link *Link) {
+		value := parentLinkID
+		link.parentLinkID = &value
 	}
 }

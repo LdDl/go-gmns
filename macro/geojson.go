@@ -11,6 +11,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(link.Geom())
 	f.ID = link.ID
 	f.Properties["id"] = link.ID
+	parentLinkID, hasParentLink := link.ParentLink()
+	f.Properties["parent_link_id"] = nil
+	if hasParentLink {
+		f.Properties["parent_link_id"] = parentLinkID
+	}
 	f.Properties["source_node"] = link.SourceNode()
 	f.Properties["target_node"] = link.TargetNode()
 	f.Properties["osm_way_id"] = link.OSMWay()
@@ -42,6 +47,11 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	f.Properties["node_type"] = node.NodeType()
 	f.ID = node.ID
 	f.Properties["id"] = node.ID
+	parentNodeID, hasParentNode := node.ParentNode()
+	f.Properties["parent_node_id"] = nil
+	if hasParentNode {
+		f.Properties["parent_node_id"] = parentNodeID
+	}
 	f.Properties["osm_node_id"] = node.OSMNode()
 	f.Properties["control_type"] = node.ControlType().String()
 	f.Properties["boundary_type"] = node.BoundaryType().String()
