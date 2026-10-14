@@ -212,7 +212,7 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 | `to_osm_node_id` | int64 | Target OSM node of outgoing link |
 | `type` | string | Movement direction: `thru`, `left`, `right`, `uturn` |
 | `penalty` | optional float64 | Turn penalty in seconds (`null` in GeoJSON if not set) |
-| `capacity` | int | Movement capacity (-1 if not set) |
+| `capacity` | optional float64 | Saturation capacity for the whole movement in PCE/hour (`null` in GeoJSON if not set) |
 | `control_type` | string | Traffic control type |
 | `movement_composite_type` | string | Composite type code (see table below) |
 | `volume` | int | Traffic volume (-1 if not set) |
