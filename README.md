@@ -198,7 +198,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `control_type` | string | Traffic control at downstream end |
 | `allowed_agent_types` | string | Comma-separated list of allowed agents: `auto`, `bike`, `walk`, `transit`, `rail`, `truck` |
 | `was_bidirectional` | bool | Whether original OSM way was bidirectional |
-| `lanes` | int | Number of lanes in this direction |
+| `lanes` | optional int | Permanent motor-vehicle lane count in this direction (`null` in GeoJSON if not set) |
 | `max_speed` | float64 | Maximum speed limit (km/h) |
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
@@ -211,6 +211,8 @@ All three link models can store an optional shared geometry ID and direction fla
 Link `Capacity()` and `FreeSpeed()` now return `(float64, bool)`, and `WithCapacity` accepts `float64`. Omit the option for missing data; passing `-1` stores that number. Generators preserve absence, explicit zero and fractional capacity without scaling by lane count. Converter CSV migration remains pending.
 
 `LengthMeters()` now returns `(float64, bool)` and `NewLanesInfo` returns `(LanesInfo, error)`. Zero remains a supplied length; lane preparation and meso generation require positive finite macro lengths, while micro cell generation requires positive finite lengths on its meso road segments. Export does not calculate missing lengths.
+
+Macro/meso `LanesNum()` now returns `(int, bool)`; `WithLanesNum(int)` is unchanged. Omit the option for absence; zero is a supplied count. `NewLanesInfo` requires a nonnegative count. Movement and meso generation currently require positive counts and prepared lane data; micro requires supplied nonnegative counts where consumed and supports prepared zero-lane bike/walk roads with `SeparateBikeWalk`. The micro lane index is separate from a lane count.
 
 Bicycle/pedestrian facilities and parking describe infrastructure independently of allowed agents. Suggested category constants are available in `gmns/types`; custom strings are supported. Empty values, `none` and `unknown` remain distinct. See the note in the micro link section for more details about thouse specific fields.
 
@@ -317,7 +319,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `out_lane_end` | int | Outgoing lane end index |
 | `control_type` | string | Traffic control type |
 | `link_type` | string | Road type from macro link |
-| `lanes_num` | int | Number of lanes |
+| `lanes_num` | optional int | Permanent motor-vehicle lane count (`null` in GeoJSON if not set) |
 | `lanes_change` | int | Lane change indicator: -1 (decrease), 0 (same), +1 (increase) |
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |

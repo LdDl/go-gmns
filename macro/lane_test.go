@@ -101,10 +101,10 @@ func TestNewLanesInfoRejectsNilLink(t *testing.T) {
 }
 
 type preparedLaneCountCase struct {
-	name string
-	value int
+	name    string
+	value   int
 	present bool
-	valid bool
+	valid   bool
 }
 
 func TestNewLanesInfoRequiresLaneCount(t *testing.T) {
@@ -113,20 +113,20 @@ func TestNewLanesInfoRequiresLaneCount(t *testing.T) {
 			name: "absent",
 		},
 		{
-			name: "negative",
-			value: -1,
+			name:    "negative",
+			value:   -1,
 			present: true,
 		},
 		{
-			name: "zero motor lanes",
+			name:    "zero motor lanes",
 			present: true,
-			valid: true,
+			valid:   true,
 		},
 		{
-			name: "two motor lanes",
-			value: 2,
+			name:    "two motor lanes",
+			value:   2,
 			present: true,
-			valid: true,
+			valid:   true,
 		},
 	}
 	for _, testCase := range cases {

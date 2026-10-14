@@ -8,9 +8,9 @@ import (
 )
 
 type linkLaneCountCase struct {
-	name string
+	name    string
 	options []func(*Link)
-	value int
+	value   int
 	present bool
 }
 
@@ -31,7 +31,7 @@ func TestLinkLaneCountGeoJSON(t *testing.T) {
 			options: []func(*Link){
 				WithLanesNum(-1),
 			},
-			value: -1,
+			value:   -1,
 			present: true,
 		},
 		{
@@ -39,7 +39,7 @@ func TestLinkLaneCountGeoJSON(t *testing.T) {
 			options: []func(*Link){
 				WithLanesNum(2),
 			},
-			value: 2,
+			value:   2,
 			present: true,
 		},
 		{
@@ -77,4 +77,3 @@ func TestLinkLaneCountGeoJSON(t *testing.T) {
 		})
 	}
 }
-

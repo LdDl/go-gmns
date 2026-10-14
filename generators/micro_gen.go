@@ -223,15 +223,15 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 		return nil // Skip links without meso links
 	}
 
-	// Determine multimodal agent types
-	agentTypes := macroLink.AllowedAgentTypes()
-	mainAgents, hasBike, hasWalk := prepareBikeWalkAgents(agentTypes, opts.SeparateBikeWalk)
-
 	lanesNum, err := requiredMacroLaneCount(macroLink)
 	if err != nil {
 		return err
 	}
 	originalLanesNum := float64(lanesNum)
+
+	// Determine multimodal agent types.
+	agentTypes := macroLink.AllowedAgentTypes()
+	mainAgents, hasBike, hasWalk := prepareBikeWalkAgents(agentTypes, opts.SeparateBikeWalk, lanesNum)
 
 	// Local mapping to track micro nodes during generation
 	localMapping := make(mesoMicroMapping)
@@ -860,7 +860,7 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 }
 
 // prepareBikeWalkAgents separates bike/walk agents if needed
-func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool) (main []types.AgentType, bike bool, walk bool) {
+func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool, lanesNum int) (main []types.AgentType, bike bool, walk bool) {
 	if len(agentTypes) == 0 || !separate {
 		main = make([]types.AgentType, len(agentTypes))
 		copy(main, agentTypes)
@@ -880,6 +880,17 @@ func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool) (main []
 		case types.AGENT_WALK:
 			hasWalk = true
 		}
+	}
+
+	// Without motor lanes, bike and walk need their own paths.
+	if lanesNum == 0 {
+		main = make([]types.AgentType, 0, len(agentTypes))
+		for _, agent := range agentTypes {
+			if agent != types.AGENT_BIKE && agent != types.AGENT_WALK {
+				main = append(main, agent)
+			}
+		}
+		return main, hasBike, hasWalk
 	}
 
 	if hasAuto && hasBike && hasWalk {
