@@ -53,8 +53,8 @@ type Link struct {
 	// Inherited from parent data
 	mesoLinkType      types.LinkType
 	controlType       types.ControlType
-	freeSpeed         float64
-	capacity          int
+	freeSpeed         *float64
+	capacity          *float64
 	allowedAgentTypes []types.AgentType
 }
 
@@ -78,8 +78,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		additionalTravelCost:  0.0,
 		mesoLinkType:          types.LINK_UNDEFINED,
 		controlType:           types.CONTROL_TYPE_NOT_SIGNAL,
-		freeSpeed:             0.0,
-		capacity:              0,
 		allowedAgentTypes:     []types.AgentType{},
 	}
 	for _, option := range options {
@@ -182,14 +180,20 @@ func (link *Link) ControlType() types.ControlType {
 	return link.controlType
 }
 
-// FreeSpeed returns free flow speed for the link
-func (link *Link) FreeSpeed() float64 {
-	return link.freeSpeed
+// FreeSpeed returns the supplied free-flow speed in km/h and whether it is set.
+func (link *Link) FreeSpeed() (float64, bool) {
+	if link.freeSpeed == nil {
+		return 0, false
+	}
+	return *link.freeSpeed, true
 }
 
-// Capacity returns max capacity of the link
-func (link *Link) Capacity() int {
-	return link.capacity
+// Capacity returns the supplied saturation capacity in PCE/hour/lane and whether it is set.
+func (link *Link) Capacity() (float64, bool) {
+	if link.capacity == nil {
+		return 0, false
+	}
+	return *link.capacity, true
 }
 
 // AllowedAgentTypes returns set of allowed agent types
@@ -298,17 +302,19 @@ func WithControlType(controlType types.ControlType) func(*Link) {
 	}
 }
 
-// WithFreeSpeed sets free flow speed
+// WithFreeSpeed stores the supplied free-flow speed in km/h.
 func WithFreeSpeed(freeSpeed float64) func(*Link) {
 	return func(link *Link) {
-		link.freeSpeed = freeSpeed
+		value := freeSpeed
+		link.freeSpeed = &value
 	}
 }
 
-// WithCapacity sets max capacity
-func WithCapacity(capacity int) func(*Link) {
+// WithCapacity stores the supplied saturation capacity in PCE/hour/lane.
+func WithCapacity(capacity float64) func(*Link) {
 	return func(link *Link) {
-		link.capacity = capacity
+		value := capacity
+		link.capacity = &value
 	}
 }
 

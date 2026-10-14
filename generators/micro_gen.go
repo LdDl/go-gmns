@@ -638,12 +638,18 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 		micro.WithLaneID(laneID),
 		micro.WithMesoLinkType(mesoLink.LinkType()),
 		micro.WithControlType(mesoLink.ControlType()),
-		micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-		micro.WithCapacity(mesoLink.Capacity()),
 		micro.WithAllowedAgentTypes(allowedAgents),
 		micro.WithMovementCompositeType(movement.MOVEMENT_UNDEFINED),
 	)
 
+	freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+	if hasFreeSpeed {
+		micro.WithFreeSpeed(freeSpeed)(link)
+	}
+	capacity, hasCapacity := mesoLink.Capacity()
+	if hasCapacity {
+		micro.WithCapacity(capacity)(link)
+	}
 	microNet.AddLink(link)
 	sourceNode.AddOutcomingLink(linkID)
 	targetNode.AddIncomingLink(linkID)
@@ -760,12 +766,18 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 					micro.WithLaneID(laneOffset+1),
 					micro.WithMesoLinkType(mesoLink.LinkType()),
 					micro.WithControlType(mesoLink.ControlType()),
-					micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-					micro.WithCapacity(mesoLink.Capacity()),
 					micro.WithAllowedAgentTypes(mesoLink.AllowedAgentTypes()),
 					micro.WithIsFirstMovementCell(isFirstMovement),
 					micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 				)
+				freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+				if hasFreeSpeed {
+					micro.WithFreeSpeed(freeSpeed)(link)
+				}
+				capacity, hasCapacity := mesoLink.Capacity()
+				if hasCapacity {
+					micro.WithCapacity(capacity)(link)
+				}
 				microNet.AddLink(link)
 				lastNode.AddOutcomingLink(linkID)
 				node.AddIncomingLink(linkID)
@@ -792,12 +804,18 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 				micro.WithLaneID(laneOffset+1),
 				micro.WithMesoLinkType(mesoLink.LinkType()),
 				micro.WithControlType(mesoLink.ControlType()),
-				micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-				micro.WithCapacity(mesoLink.Capacity()),
 				micro.WithAllowedAgentTypes(mesoLink.AllowedAgentTypes()),
 				micro.WithIsFirstMovementCell(isFirstMovement),
 				micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 			)
+			freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+			if hasFreeSpeed {
+				micro.WithFreeSpeed(freeSpeed)(link)
+			}
+			capacity, hasCapacity := mesoLink.Capacity()
+			if hasCapacity {
+				micro.WithCapacity(capacity)(link)
+			}
 			microNet.AddLink(link)
 			lastNode.AddOutcomingLink(linkID)
 			endNode.AddIncomingLink(linkID)

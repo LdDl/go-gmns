@@ -861,8 +861,14 @@ func updateLinksProperties(
 				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macroscopic link with id %d for mesoscopic link %d", macroLinkID, mesoLink.ID)
 			}
 			meso.WithLinkType(macroLink.LinkType())(mesoLink)
-			meso.WithFreeSpeed(macroLink.FreeSpeed())(mesoLink)
-			meso.WithCapacity(macroLink.Capacity())(mesoLink)
+			freeSpeed, hasFreeSpeed := macroLink.FreeSpeed()
+			if hasFreeSpeed {
+				meso.WithFreeSpeed(freeSpeed)(mesoLink)
+			}
+			capacity, hasCapacity := macroLink.Capacity()
+			if hasCapacity {
+				meso.WithCapacity(capacity)(mesoLink)
+			}
 			meso.WithAllowedAgentTypes(macroLink.AllowedAgentTypes())(mesoLink)
 			// Reset contrl type property to default
 			meso.WithControlType(types.CONTROL_TYPE_NOT_SIGNAL)(mesoLink)
@@ -924,8 +930,14 @@ func updateLinksProperties(
 		}
 		// Inherit upstream mesoscopic link properties
 		meso.WithLinkType(upstreamMesoLink.LinkType())(mesoLink)
-		meso.WithFreeSpeed(upstreamMesoLink.FreeSpeed())(mesoLink)
-		meso.WithCapacity(upstreamMesoLink.Capacity())(mesoLink)
+		freeSpeed, hasFreeSpeed := upstreamMesoLink.FreeSpeed()
+		if hasFreeSpeed {
+			meso.WithFreeSpeed(freeSpeed)(mesoLink)
+		}
+		capacity, hasCapacity := upstreamMesoLink.Capacity()
+		if hasCapacity {
+			meso.WithCapacity(capacity)(mesoLink)
+		}
 		meso.WithAllowedAgentTypes(upstreamMesoLink.AllowedAgentTypes())(mesoLink)
 	}
 	return nil

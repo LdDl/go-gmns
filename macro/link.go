@@ -30,7 +30,7 @@ type Link struct {
 	dirFlag            *gmns.DirectionFlag
 	allowedAgentTypes  []types.AgentType
 	lengthMeters       float64
-	freeSpeed          float64
+	freeSpeed          *float64
 	maxSpeed           float64
 	ID                 gmns.LinkID
 	sourceNodeID       gmns.NodeID
@@ -39,7 +39,7 @@ type Link struct {
 	sourceOsmNodeID    osm.NodeID
 	targetOsmNodeID    osm.NodeID
 	lanesNum           int
-	capacity           int
+	capacity           *float64
 	linkClass          types.LinkClass
 	linkType           types.LinkType
 	linkConnectionType types.LinkConnectionType
@@ -57,7 +57,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		geomEuclidean:      orb.LineString{},
 		allowedAgentTypes:  []types.AgentType{},
 		lengthMeters:       -1,
-		freeSpeed:          -1,
 		maxSpeed:           -1,
 		ID:                 id,
 		sourceNodeID:       sourceNodeID,
@@ -66,7 +65,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		sourceOsmNodeID:    osm.NodeID(-1),
 		targetOsmNodeID:    osm.NodeID(-1),
 		lanesNum:           -1,
-		capacity:           -1,
 		linkClass:          types.LINK_CLASS_UNDEFINED,
 		linkType:           types.LINK_UNDEFINED,
 		linkConnectionType: types.NOT_A_LINK,
@@ -179,9 +177,12 @@ func (link *Link) LengthMeters() float64 {
 	return link.lengthMeters
 }
 
-// FreeSpeed returns free flow speed for the link. Outputs "-1" if it was not set.
-func (link *Link) FreeSpeed() float64 {
-	return link.freeSpeed
+// FreeSpeed returns the supplied free-flow speed in km/h and whether it is set.
+func (link *Link) FreeSpeed() (float64, bool) {
+	if link.freeSpeed == nil {
+		return 0, false
+	}
+	return *link.freeSpeed, true
 }
 
 // MaxSpeed returns speed restriction the link. Outputs "-1" if it was not set.
@@ -219,9 +220,12 @@ func (link *Link) LanesNum() int {
 	return link.lanesNum
 }
 
-// Capacity returns max capacity of the link. Outputs "-1" if it was not set.
-func (link *Link) Capacity() int {
-	return link.capacity
+// Capacity returns the supplied saturation capacity in PCE/hour/lane and whether it is set.
+func (link *Link) Capacity() (float64, bool) {
+	if link.capacity == nil {
+		return 0, false
+	}
+	return *link.capacity, true
 }
 
 // LinkClass returns link class
@@ -310,10 +314,11 @@ func WithLengthMeters(lengthMeters float64) func(*Link) {
 	}
 }
 
-// WithFreeSpeed sets free flow speed for the link
+// WithFreeSpeed stores the supplied free-flow speed in km/h.
 func WithFreeSpeed(freeSpeed float64) func(*Link) {
 	return func(link *Link) {
-		link.freeSpeed = freeSpeed
+		value := freeSpeed
+		link.freeSpeed = &value
 	}
 }
 
@@ -366,10 +371,11 @@ func WithLanesNum(lanesNum int) func(*Link) {
 	}
 }
 
-// WithCapacity sets max capacity for the link
-func WithCapacity(capacity int) func(*Link) {
+// WithCapacity stores the supplied saturation capacity in PCE/hour/lane.
+func WithCapacity(capacity float64) func(*Link) {
 	return func(link *Link) {
-		link.capacity = capacity
+		value := capacity
+		link.capacity = &value
 	}
 }
 

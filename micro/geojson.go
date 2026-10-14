@@ -50,8 +50,16 @@ func (link *Link) GeoFeature() *geojson.Feature {
 		allowedAgentTypesStrs[i] = agentType.String()
 	}
 	f.Properties["allowed_agent_types"] = strings.Join(allowedAgentTypesStrs, ",")
-	f.Properties["free_speed"] = link.FreeSpeed()
-	f.Properties["capacity"] = link.Capacity()
+	freeSpeed, hasFreeSpeed := link.FreeSpeed()
+	f.Properties["free_speed"] = nil
+	if hasFreeSpeed {
+		f.Properties["free_speed"] = freeSpeed
+	}
+	capacity, hasCapacity := link.Capacity()
+	f.Properties["capacity"] = nil
+	if hasCapacity {
+		f.Properties["capacity"] = capacity
+	}
 	f.Properties["length_meters"] = link.LengthMeters()
 	return f
 }

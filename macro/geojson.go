@@ -49,8 +49,16 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f.Properties["was_bidirectional"] = link.WasBidirectional()
 	f.Properties["lanes"] = link.LanesNum()
 	f.Properties["max_speed"] = link.MaxSpeed()
-	f.Properties["free_speed"] = link.FreeSpeed()
-	f.Properties["capacity"] = link.Capacity()
+	freeSpeed, hasFreeSpeed := link.FreeSpeed()
+	f.Properties["free_speed"] = nil
+	if hasFreeSpeed {
+		f.Properties["free_speed"] = freeSpeed
+	}
+	capacity, hasCapacity := link.Capacity()
+	f.Properties["capacity"] = nil
+	if hasCapacity {
+		f.Properties["capacity"] = capacity
+	}
 	f.Properties["length_meters"] = link.LengthMeters()
 	f.Properties["name"] = link.Name()
 	return f

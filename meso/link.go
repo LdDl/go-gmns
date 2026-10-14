@@ -53,10 +53,12 @@ type Link struct {
 	movementOutcomeLaneStartSeqID int
 
 	/* Inherited from paret data parameters */
-	controlType       types.ControlType // Inherited from macroscopic node
-	linkType          types.LinkType    // Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
-	freeSpeed         float64           // Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
-	capacity          int               // Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
+	controlType types.ControlType // Inherited from macroscopic node
+	linkType    types.LinkType    // Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
+	// Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
+	freeSpeed *float64
+	// Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
+	capacity          *float64
 	allowedAgentTypes []types.AgentType // Inherited either from macroscopic link or from first incoming incident edge in macroscopic node
 }
 
@@ -83,8 +85,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		// Default parent data
 		controlType:       types.CONTROL_TYPE_NOT_SIGNAL,
 		linkType:          types.LINK_UNDEFINED,
-		freeSpeed:         0.0,
-		capacity:          0,
 		allowedAgentTypes: []types.AgentType{},
 	}
 	for _, option := range options {
@@ -206,14 +206,20 @@ func (link *Link) LinkType() types.LinkType {
 	return link.linkType
 }
 
-// FreeSpeed returns free flow speed for the link. Outputs "-1" if it was not set.
-func (link *Link) FreeSpeed() float64 {
-	return link.freeSpeed
+// FreeSpeed returns the supplied free-flow speed in km/h and whether it is set.
+func (link *Link) FreeSpeed() (float64, bool) {
+	if link.freeSpeed == nil {
+		return 0, false
+	}
+	return *link.freeSpeed, true
 }
 
-// Capacity returns max capacity of the link. Outputs "-1" if it was not set.
-func (link *Link) Capacity() int {
-	return link.capacity
+// Capacity returns the supplied saturation capacity in PCE/hour/lane and whether it is set.
+func (link *Link) Capacity() (float64, bool) {
+	if link.capacity == nil {
+		return 0, false
+	}
+	return *link.capacity, true
 }
 
 // AllowedAgentTypes returns set of allowed agent types. Warning: returning object is a slice.
@@ -354,17 +360,19 @@ func WithLinkType(linkType types.LinkType) func(*Link) {
 	}
 }
 
-// WithFreeSpeed sets free flow speed for the link
+// WithFreeSpeed stores the supplied free-flow speed in km/h.
 func WithFreeSpeed(freeSpeed float64) func(*Link) {
 	return func(link *Link) {
-		link.freeSpeed = freeSpeed
+		value := freeSpeed
+		link.freeSpeed = &value
 	}
 }
 
-// WithCapacity sets max capacity for the link
-func WithCapacity(capacity int) func(*Link) {
+// WithCapacity stores the supplied saturation capacity in PCE/hour/lane.
+func WithCapacity(capacity float64) func(*Link) {
 	return func(link *Link) {
-		link.capacity = capacity
+		value := capacity
+		link.capacity = &value
 	}
 }
 
