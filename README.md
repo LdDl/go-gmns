@@ -192,6 +192,8 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `name` | string | Road name from OSM |
 | `geom` | WKT | LineString geometry in WKT format |
 
+All three link models can store an optional shared geometry ID and direction flag independently of the travel-oriented line. Shared geometry table export for meso/micro remains pending. See the note in the micro link section for more details about this specific field.
+
 ### Movements
 
 Movements represent allowed turn maneuvers at intersections, connecting incoming links to outgoing links.
@@ -318,6 +320,8 @@ The microscopic network provides cell-based representation for detailed simulati
 | `latitude` | float64 | WGS84 latitude |
 
 #### Micro links
+
+> Note: For the micro graph produced by the current generator, `geometry_id` has no practical use: each cell or lane-change link already carries its own geometry. The optional field is retained for GMNS compatibility and is left unset by the generator.
 
 | Field | Type | Description |
 |-------|------|-------------|
