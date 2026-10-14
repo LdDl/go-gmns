@@ -152,6 +152,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique node identifier |
+| `node_type` | string | What the node represents; empty if not supplied |
 | `osm_node_id` | int64 | Original OpenStreetMap node ID |
 | `control_type` | string | Traffic control type at node: `none`, `yield`, `stop`, `signal`, `signal_minor_stop`, `signal_minor_yield` |
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
@@ -252,6 +253,8 @@ The mesoscopic network provides lane-level representation with offset geometries
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique meso node identifier |
+| `node_type` | string | What the node represents; empty if not supplied |
+| `name` | string | Supplied node name; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
 | `macro_link_id` | int64 | Associated macro link ID for mid-link nodes (-1 if at intersection) |
 | `macro_zone_id` | int64 | Zone ID from macro network (-1 if not boundary) |
@@ -265,6 +268,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique meso link identifier |
+| `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source meso node ID |
 | `target_node` | int64 | Target meso node ID |
 | `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
@@ -296,6 +300,8 @@ The microscopic network provides cell-based representation for detailed simulati
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique micro node identifier |
+| `node_type` | string | What the node represents; empty if not supplied |
+| `name` | string | Supplied node name; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `lane_id` | int | Lane index within the meso link |
 | `cell_index` | int | Cell position along the lane (0 = upstream) |
@@ -311,6 +317,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique micro link identifier |
+| `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source micro node ID |
 | `target_node` | int64 | Target micro node ID |
 | `meso_link_id` | int64 | Associated meso link ID |
