@@ -12,6 +12,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f.Properties["name"] = link.Name()
 	f.ID = link.ID
 	f.Properties["id"] = link.ID
+	parentLinkID, hasParentLink := link.ParentLink()
+	f.Properties["parent_link_id"] = nil
+	if hasParentLink {
+		f.Properties["parent_link_id"] = parentLinkID
+	}
 	f.Properties["source_node"] = link.SourceNode()
 	f.Properties["target_node"] = link.TargetNode()
 	f.Properties["macro_node_id"] = link.MacroNode()
@@ -40,6 +45,11 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	f.Properties["name"] = node.Name()
 	f.ID = node.ID
 	f.Properties["id"] = node.ID
+	parentNodeID, hasParentNode := node.ParentNode()
+	f.Properties["parent_node_id"] = nil
+	if hasParentNode {
+		f.Properties["parent_node_id"] = parentNodeID
+	}
 	f.Properties["zone_id"] = node.MacroZone()
 	f.Properties["macro_node_id"] = node.MacroNode()
 	f.Properties["macro_link_id"] = node.MacroLink()

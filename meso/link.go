@@ -8,6 +8,8 @@ import (
 )
 
 type Link struct {
+	parentLinkID *gmns.LinkID
+
 	name string
 
 	ID gmns.LinkID
@@ -350,5 +352,23 @@ func (link *Link) Name() string {
 func WithLinkName(name string) func(*Link) {
 	return func(link *Link) {
 		link.name = name
+	}
+}
+
+// ParentLink returns the optional associated link ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (link *Link) ParentLink() (gmns.LinkID, bool) {
+	if link.parentLinkID == nil {
+		return 0, false
+	}
+	return *link.parentLinkID, true
+}
+
+// WithParentLinkID sets an associated link reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentLinkID(parentLinkID gmns.LinkID) func(*Link) {
+	return func(link *Link) {
+		value := parentLinkID
+		link.parentLinkID = &value
 	}
 }

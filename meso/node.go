@@ -8,6 +8,8 @@ import (
 )
 
 type Node struct {
+	parentNodeID *gmns.NodeID
+
 	name     string
 	nodeType string
 
@@ -180,5 +182,23 @@ func (node *Node) Name() string {
 func WithNodeName(name string) func(*Node) {
 	return func(node *Node) {
 		node.name = name
+	}
+}
+
+// ParentNode returns the optional associated node ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (node *Node) ParentNode() (gmns.NodeID, bool) {
+	if node.parentNodeID == nil {
+		return 0, false
+	}
+	return *node.parentNodeID, true
+}
+
+// WithParentNodeID sets an associated node reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
+	return func(node *Node) {
+		value := parentNodeID
+		node.parentNodeID = &value
 	}
 }
