@@ -178,6 +178,8 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `source_node` | int64 | Source node ID |
 | `target_node` | int64 | Target node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
+| `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `osm_way_id` | int64 | Original OpenStreetMap way ID |
 | `source_osm_node_id` | int64 | Source OSM node ID |
 | `target_osm_node_id` | int64 | Target OSM node ID |
@@ -281,6 +283,8 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `source_node` | int64 | Source meso node ID |
 | `target_node` | int64 | Target meso node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
+| `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `segment_idx` | int | Segment index within macro link |
@@ -335,6 +339,8 @@ The microscopic network provides cell-based representation for detailed simulati
 | `source_node` | int64 | Source micro node ID |
 | `target_node` | int64 | Target micro node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
+| `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `macro_node_id` | int64 | Associated macro node (-1 for road cells) |

@@ -9,6 +9,9 @@ import (
 
 // Link represents a microscopic network link (cell)
 type Link struct {
+	gradePercent *float64
+	jurisdiction string
+
 	directed bool
 
 	parentLinkID *gmns.LinkID
@@ -369,5 +372,34 @@ func (link *Link) Directed() bool {
 func WithDirected(directed bool) func(*Link) {
 	return func(link *Link) {
 		link.directed = directed
+	}
+}
+
+// Grade returns the supplied grade in percent and whether it was supplied.
+// Negative values describe downhill travel.
+func (link *Link) Grade() (float64, bool) {
+	if link.gradePercent == nil {
+		return 0, false
+	}
+	return *link.gradePercent, true
+}
+
+// WithGrade stores a grade in percent without calculating it from geometry.
+func WithGrade(gradePercent float64) func(*Link) {
+	return func(link *Link) {
+		value := gradePercent
+		link.gradePercent = &value
+	}
+}
+
+// Jurisdiction returns the supplied owner/operator, or an empty string when absent.
+func (link *Link) Jurisdiction() string {
+	return link.jurisdiction
+}
+
+// WithJurisdiction sets the owner/operator; an empty string clears the value.
+func WithJurisdiction(jurisdiction string) func(*Link) {
+	return func(link *Link) {
+		link.jurisdiction = jurisdiction
 	}
 }
