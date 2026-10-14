@@ -146,7 +146,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		if !ok {
 			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %d", macroLinkID)
 		}
-		for i, item := range macroLinkProcess.lanesInfo.LanesChangePoints {
+		// Keep rescaled breakpoints separate from the source link's slice.
+		sourceChangePoints := macroLinkProcess.lanesInfo.LanesChangePoints
+		macroLinkProcess.lanesInfo.LanesChangePoints = make([]float64, len(sourceChangePoints))
+		for i, item := range sourceChangePoints {
 			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / macroLink.LengthMeters()) * macroLinkProcess.lengthMetersOffset
 		}
 	}
