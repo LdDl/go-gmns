@@ -9,6 +9,8 @@ import (
 
 // Node representation of a vertex in a macroscopic graph
 type Node struct {
+	altitudeMeters *float64
+
 	parentNodeID *gmns.NodeID
 
 	nodeType string
@@ -119,6 +121,23 @@ func (node *Node) ActivityType() types.ActivityType {
 // ActivityLinkType returns node activity link type (based on Link information)
 func (node *Node) ActivityLinkType() types.LinkType {
 	return node.activityLinkType
+}
+
+// AltitudeMeters returns the supplied altitude in meters and whether it is set.
+func (node *Node) AltitudeMeters() (float64, bool) {
+	if node.altitudeMeters == nil {
+		return 0, false
+	}
+	return *node.altitudeMeters, true
+}
+
+// WithAltitudeMeters stores altitude independently of the two-dimensional geometry.
+// Zero and negative altitudes are supplied values, not absence.
+func WithAltitudeMeters(altitudeMeters float64) func(*Node) {
+	return func(node *Node) {
+		value := altitudeMeters
+		node.altitudeMeters = &value
+	}
 }
 
 // Geom returns corresponding geometry [WGS84]

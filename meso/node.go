@@ -8,6 +8,8 @@ import (
 )
 
 type Node struct {
+	altitudeMeters *float64
+
 	parentNodeID *gmns.NodeID
 
 	name     string
@@ -47,6 +49,23 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		option(newNode)
 	}
 	return newNode
+}
+
+// AltitudeMeters returns the supplied altitude in meters and whether it is set.
+func (node *Node) AltitudeMeters() (float64, bool) {
+	if node.altitudeMeters == nil {
+		return 0, false
+	}
+	return *node.altitudeMeters, true
+}
+
+// WithAltitudeMeters stores altitude independently of the two-dimensional geometry.
+// Zero and negative altitudes are supplied values, not absence.
+func WithAltitudeMeters(altitudeMeters float64) func(*Node) {
+	return func(node *Node) {
+		value := altitudeMeters
+		node.altitudeMeters = &value
+	}
 }
 
 // Geom returns corresponding geometry [WGS84]

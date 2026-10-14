@@ -145,6 +145,8 @@ The movement, meso and micro generators require directed input links and return 
 
 Most of it gracefully stolen from https://osm2gmns.readthedocs.io/en/stable/mrm.html
 
+Altitude and right-of-way width are stored in meters and are not inferred by generators. GeoJSON keeps altitude as a `z_coord` property alongside two-dimensional geometry. GMNS CSV integration remains pending and must declare meters as `short_length` or convert these values to the configured unit.
+
 ### Macroscopic network
 
 The macroscopic network represents road segments at the highest level of abstraction, where each link connects two nodes (intersections or points where road topology changes).
@@ -156,6 +158,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `id` | int64 | Unique node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `osm_node_id` | int64 | Original OpenStreetMap node ID |
 | `control_type` | string | Traffic control type at node: `none`, `yield`, `stop`, `signal`, `signal_minor_stop`, `signal_minor_yield` |
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
@@ -179,6 +182,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `target_node` | int64 | Target node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
@@ -269,6 +273,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `id` | int64 | Unique meso node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
 | `macro_link_id` | int64 | Associated macro link ID for mid-link nodes (-1 if at intersection) |
@@ -289,6 +294,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `target_node` | int64 | Target meso node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
@@ -324,6 +330,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `id` | int64 | Unique micro node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `lane_id` | int | Lane index within the meso link |
@@ -348,6 +355,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `target_node` | int64 | Target micro node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
+| `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |

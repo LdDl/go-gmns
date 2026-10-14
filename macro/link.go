@@ -9,6 +9,8 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	rightOfWayWidthMeters *float64
+
 	bikeFacility string
 	pedFacility  string
 	parking      string
@@ -434,6 +436,23 @@ func (link *Link) Directed() bool {
 func WithDirected(directed bool) func(*Link) {
 	return func(link *Link) {
 		link.directed = directed
+	}
+}
+
+// RightOfWayWidthMeters returns the supplied width of the entire right-of-way in meters.
+// The width covers both directions and is independent of individual lane widths.
+func (link *Link) RightOfWayWidthMeters() (float64, bool) {
+	if link.rightOfWayWidthMeters == nil {
+		return 0, false
+	}
+	return *link.rightOfWayWidthMeters, true
+}
+
+// WithRightOfWayWidthMeters stores the entire right-of-way width without deriving it from lanes.
+func WithRightOfWayWidthMeters(rightOfWayWidthMeters float64) func(*Link) {
+	return func(link *Link) {
+		value := rightOfWayWidthMeters
+		link.rightOfWayWidthMeters = &value
 	}
 }
 

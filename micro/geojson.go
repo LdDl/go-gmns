@@ -20,6 +20,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f.Properties["source_node"] = link.SourceNode()
 	f.Properties["target_node"] = link.TargetNode()
 	f.Properties["directed"] = link.Directed()
+	rightOfWayWidthMeters, hasRightOfWayWidth := link.RightOfWayWidthMeters()
+	f.Properties["row_width"] = nil
+	if hasRightOfWayWidth {
+		f.Properties["row_width"] = rightOfWayWidthMeters
+	}
 	grade, hasGrade := link.Grade()
 	f.Properties["grade"] = nil
 	if hasGrade {
@@ -54,6 +59,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 // GeoFeature returns GeoJSON Point feature for the given node
 func (node *Node) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(node.Geom())
+	altitudeMeters, hasAltitude := node.AltitudeMeters()
+	f.Properties["z_coord"] = nil
+	if hasAltitude {
+		f.Properties["z_coord"] = altitudeMeters
+	}
 	f.Properties["node_type"] = node.NodeType()
 	f.Properties["name"] = node.Name()
 	f.ID = node.ID
