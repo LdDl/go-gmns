@@ -85,7 +85,11 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	f.Properties["boundary_type"] = node.BoundaryType().String()
 	f.Properties["activity_type"] = node.ActivityType().String()
 	f.Properties["activity_link_type"] = node.ActivityLinkType().String()
-	f.Properties["zone_id"] = node.Zone()
+	zoneID, hasZone := node.Zone()
+	f.Properties["zone_id"] = nil
+	if hasZone {
+		f.Properties["zone_id"] = zoneID
+	}
 	f.Properties["intersection_id"] = node.Intersection()
 	f.Properties["poi_id"] = node.POI()
 	f.Properties["osm_highway"] = node.OSMHighway()

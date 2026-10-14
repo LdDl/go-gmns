@@ -424,7 +424,10 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[0]]; ok {
 						node.SetUpstreamEnd(true)
-						node.SetZoneID(macroSourceNode.Zone())
+						zoneID, hasZone := macroSourceNode.Zone()
+						if hasZone {
+							node.SetZoneID(zoneID)
+						}
 					}
 				}
 			}
@@ -449,7 +452,10 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[len(nodeIDs)-1]]; ok {
 						node.SetDownstreamEnd(true)
-						node.SetZoneID(macroTargetNode.Zone())
+						zoneID, hasZone := macroTargetNode.Zone()
+						if hasZone {
+							node.SetZoneID(zoneID)
+						}
 					}
 				}
 			}

@@ -597,10 +597,13 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 				meso.WithPointEuclideanGeom(macroLinkProcess.offsetGeomEuclideanCut[0][0]),
 				meso.WithPointMacroNodeID(macroLinkProcess.sourceMacroNodeID),
 				meso.WithPointMacroLinkID(-1),
-				meso.WithMacroZone(sourceMacroNode.Zone()),
 				meso.WithActivityLinkType(sourceMacroNode.ActivityLinkType()),
 				meso.WithBoundaryType(types.BOUNDARY_NONE),
 			)
+			zoneID, hasZone := sourceMacroNode.Zone()
+			if hasZone {
+				meso.WithMacroZone(zoneID)(upstreamMesoNode)
+			}
 			collectedMesoNodes[upstreamMesoNode.ID] = upstreamMesoNode
 		}
 
@@ -624,12 +627,13 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 				expandedMesoNodes[macroLinkProcess.targetMacroNodeID] += 1
 				macroNodeID := gmns.NodeID(-1)
 				macroLinkID := macroLinkProcess.id
-				zoneID := gmns.NodeID(-1)
+				var zoneID gmns.NodeID
+				hasZone := false
 				activityLinkType := types.LINK_UNDEFINED
 				if segmentIdx == segmentsToCut-1 {
 					macroNodeID = macroLinkProcess.targetMacroNodeID
 					macroLinkID = gmns.LinkID(-1)
-					zoneID = targetMacroNode.Zone()
+					zoneID, hasZone = targetMacroNode.Zone()
 					activityLinkType = targetMacroNode.ActivityLinkType()
 				}
 				downstreamMesoNode = meso.NewNodeFrom(
@@ -638,10 +642,12 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 					meso.WithPointEuclideanGeom(macroLinkProcess.offsetGeomEuclideanCut[segmentIdx][len(macroLinkProcess.offsetGeomEuclideanCut[segmentIdx])-1]),
 					meso.WithPointMacroNodeID(macroNodeID),
 					meso.WithPointMacroLinkID(macroLinkID),
-					meso.WithMacroZone(zoneID),
 					meso.WithActivityLinkType(activityLinkType),
 					meso.WithBoundaryType(types.BOUNDARY_NONE),
 				)
+				if hasZone {
+					meso.WithMacroZone(zoneID)(downstreamMesoNode)
+				}
 				collectedMesoNodes[downstreamMesoNode.ID] = downstreamMesoNode
 			}
 

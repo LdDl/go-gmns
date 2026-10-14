@@ -23,7 +23,8 @@ type Node struct {
 	macroNodeID gmns.NodeID
 	macroLinkID gmns.LinkID
 
-	macroZoneID      gmns.NodeID        // Should be inherited from the macroscopic node
+	// Should be inherited from the macroscopic node
+	macroZoneID      *gmns.NodeID
 	activityLinkType types.LinkType     // Should be inherited from the macroscopic node
 	boundaryType     types.BoundaryType // Should be evaluated from macroscopic node and macroscopic link
 
@@ -39,7 +40,6 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		geomEuclidean:    orb.Point{},
 		macroNodeID:      -1,
 		macroLinkID:      -1,
-		macroZoneID:      -1,
 		activityLinkType: types.LINK_UNDEFINED,
 		boundaryType:     types.BOUNDARY_NONE,
 		incomingLinks:    orderedmap.NewOrderedMap(),
@@ -88,9 +88,12 @@ func (node *Node) MacroLink() gmns.LinkID {
 	return node.macroLinkID
 }
 
-// MacroZone returns parent macroscopic node's zone indetifier. Outputs "-1" if it was not set.
-func (node *Node) MacroZone() gmns.NodeID {
-	return node.macroZoneID
+// MacroZone returns the supplied zone identifier and whether it is set.
+func (node *Node) MacroZone() (gmns.NodeID, bool) {
+	if node.macroZoneID == nil {
+		return 0, false
+	}
+	return *node.macroZoneID, true
 }
 
 // ActivityLinkType returns node activity link type (based on Link information)
@@ -144,7 +147,8 @@ func WithPointMacroLinkID(macroLinkID gmns.LinkID) func(*Node) {
 // WithMacroZone sets parent macroscopic node's zone indetifier
 func WithMacroZone(macroZoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.macroZoneID = macroZoneID
+		value := macroZoneID
+		node.macroZoneID = &value
 	}
 }
 

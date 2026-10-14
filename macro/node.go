@@ -23,7 +23,7 @@ type Node struct {
 	ID               gmns.NodeID
 	osmNodeID        osm.NodeID
 	intersectionID   int
-	zoneID           gmns.NodeID
+	zoneID           *gmns.NodeID
 	poiID            gmns.PoiID
 	controlType      types.ControlType
 	boundaryType     types.BoundaryType
@@ -47,7 +47,6 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:               id,
 		osmNodeID:        osm.NodeID(-1),
 		intersectionID:   -1,
-		zoneID:           -1,
 		poiID:            -1,
 		controlType:      types.CONTROL_TYPE_NOT_SIGNAL,
 		boundaryType:     types.BOUNDARY_NONE,
@@ -93,9 +92,12 @@ func (node *Node) Intersection() int {
 	return node.intersectionID
 }
 
-// Zone returns zone identifier. Outputs "-1" if it was not set.
-func (node *Node) Zone() gmns.NodeID {
-	return node.zoneID
+// Zone returns the supplied zone identifier and whether it is set.
+func (node *Node) Zone() (gmns.NodeID, bool) {
+	if node.zoneID == nil {
+		return 0, false
+	}
+	return *node.zoneID, true
 }
 
 // POI returns POI identifier. Outputs "-1" if it was not set.
@@ -200,7 +202,8 @@ func WithIntersectionID(intersectionID int) func(*Node) {
 // WithZoneID sets zone identifier for the node
 func WithZoneID(zoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.zoneID = zoneID
+		value := zoneID
+		node.zoneID = &value
 	}
 }
 

@@ -86,7 +86,11 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	f.Properties["cell_index"] = node.CellIndex()
 	f.Properties["is_upstream_end"] = node.IsUpstreamEnd()
 	f.Properties["is_downstream_end"] = node.IsDownstreamEnd()
-	f.Properties["zone_id"] = node.ZoneID()
+	zoneID, hasZone := node.ZoneID()
+	f.Properties["zone_id"] = nil
+	if hasZone {
+		f.Properties["zone_id"] = zoneID
+	}
 	f.Properties["boundary_type"] = node.BoundaryType().String()
 	return f
 }

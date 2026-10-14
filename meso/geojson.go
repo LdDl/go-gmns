@@ -78,7 +78,11 @@ func (node *Node) GeoFeature() *geojson.Feature {
 	if hasParentNode {
 		f.Properties["parent_node_id"] = parentNodeID
 	}
-	f.Properties["zone_id"] = node.MacroZone()
+	zoneID, hasZone := node.MacroZone()
+	f.Properties["zone_id"] = nil
+	if hasZone {
+		f.Properties["zone_id"] = zoneID
+	}
 	f.Properties["macro_node_id"] = node.MacroNode()
 	f.Properties["macro_link_id"] = node.MacroLink()
 	f.Properties["activity_link_type"] = node.ActivityLinkType().String()

@@ -147,6 +147,8 @@ Most of it gracefully stolen from https://osm2gmns.readthedocs.io/en/stable/mrm.
 
 Altitude and right-of-way width are stored in meters and are not inferred by generators. GeoJSON keeps altitude as a `z_coord` property alongside two-dimensional geometry. GMNS CSV integration remains pending and must declare meters as `short_length` or convert these values to the configured unit.
 
+Node zone getters `Zone()`, `MacroZone()` and `ZoneID()` now return `(gmns.NodeID, bool)`. Omit the zone option for absence; `-1` is a supplied ID. Generators preserve presence at road endpoints and leave intermediate nodes unassigned. Zone-table validation and converter CSV migration remain pending.
+
 ### Macroscopic network
 
 The macroscopic network represents road segments at the highest level of abstraction, where each link connects two nodes (intersections or points where road topology changes).
@@ -164,7 +166,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `activity_type` | string | Activity type: `none`, `poi`, `link` |
 | `activity_link_type` | string | If activity_type=link, the predominant link type at this node |
-| `zone_id` | int64 | Zone identifier for boundary nodes (-1 if not applicable) |
+| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `intersection_id` | int64 | Intersection cluster ID (-1 if not applicable) |
 | `poi_id` | int64 | Point of interest ID (-1 if not applicable) |
 | `osm_highway` | string | OSM highway tag value (e.g., `traffic_signals`, `crossing`) |
@@ -279,7 +281,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `name` | string | Supplied node name; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
 | `macro_link_id` | int64 | Associated macro link ID for mid-link nodes (-1 if at intersection) |
-| `macro_zone_id` | int64 | Zone ID from macro network (-1 if not boundary) |
+| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `activity_link_type` | string | Link type for activity nodes |
 | `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `longitude` | float64 | WGS84 longitude |
@@ -339,7 +341,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `cell_index` | int | Cell position along the lane (0 = upstream) |
 | `is_upstream_end` | bool | Whether node is at upstream end of meso link |
 | `is_downstream_end` | bool | Whether node is at downstream end of meso link |
-| `zone_id` | int64 | Zone ID for boundary nodes (-1 otherwise) |
+| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `longitude` | float64 | WGS84 longitude |
 | `latitude` | float64 | WGS84 latitude |

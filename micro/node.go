@@ -28,7 +28,8 @@ type Node struct {
 	isUpstreamEnd   bool // Is this node at the upstream end of a macroscopic link
 	isDownstreamEnd bool // Is this node at the downstream end of a macroscopic link
 
-	zoneID       gmns.NodeID        // Inherited from macroscopic node
+	// Inherited from macroscopic node
+	zoneID       *gmns.NodeID
 	boundaryType types.BoundaryType // Inherited from macroscopic node
 
 	incomingLinks  *orderedmap.OrderedMap
@@ -46,7 +47,6 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		cellIndex:       -1,
 		isUpstreamEnd:   false,
 		isDownstreamEnd: false,
-		zoneID:          -1,
 		boundaryType:    types.BOUNDARY_NONE,
 		incomingLinks:   orderedmap.NewOrderedMap(),
 		outcomingLinks:  orderedmap.NewOrderedMap(),
@@ -109,9 +109,12 @@ func (node *Node) IsDownstreamEnd() bool {
 	return node.isDownstreamEnd
 }
 
-// ZoneID returns the zone identifier. Outputs "-1" if not set.
-func (node *Node) ZoneID() gmns.NodeID {
-	return node.zoneID
+// ZoneID returns the supplied zone identifier and whether it is set.
+func (node *Node) ZoneID() (gmns.NodeID, bool) {
+	if node.zoneID == nil {
+		return 0, false
+	}
+	return *node.zoneID, true
 }
 
 // BoundaryType returns node boundary type
@@ -181,7 +184,8 @@ func WithIsDownstreamEnd(isDownstreamEnd bool) func(*Node) {
 // WithZoneID sets the zone identifier
 func WithZoneID(zoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.zoneID = zoneID
+		value := zoneID
+		node.zoneID = &value
 	}
 }
 
@@ -232,7 +236,8 @@ func (node *Node) SetDownstreamEnd(isDownstreamEnd bool) {
 
 // SetZoneID sets the zone identifier
 func (node *Node) SetZoneID(zoneID gmns.NodeID) {
-	node.zoneID = zoneID
+	value := zoneID
+	node.zoneID = &value
 }
 
 // NodeType returns what the node represents, or an empty string when not supplied.
