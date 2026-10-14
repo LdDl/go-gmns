@@ -202,11 +202,11 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 | `osm_node_id` | int64 | OSM node ID of the intersection |
 | `name` | string | Movement name (typically empty) |
 | `in_link_id` | int64 | Incoming macro link ID |
-| `in_lane_start` | int | Starting lane index on incoming link |
-| `in_lane_end` | int | Ending lane index on incoming link |
+| `in_lane_start` | optional int | Starting lane number on incoming link (`null` if not set) |
+| `in_lane_end` | optional int | Ending lane number on incoming link (`null` denotes a single lane when the start is set) |
 | `out_link_id` | int64 | Outgoing macro link ID |
-| `out_lane_start` | int | Starting lane index on outgoing link |
-| `out_lane_end` | int | Ending lane index on outgoing link |
+| `out_lane_start` | optional int | Starting lane number on outgoing link (`null` if not set) |
+| `out_lane_end` | optional int | Ending lane number on outgoing link (`null` denotes a single lane when the start is set) |
 | `lanes_num` | int | Number of lanes for this movement |
 | `from_osm_node_id` | int64 | Source OSM node of incoming link |
 | `to_osm_node_id` | int64 | Target OSM node of outgoing link |
