@@ -9,6 +9,10 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	bikeFacility string
+	pedFacility  string
+	parking      string
+
 	gradePercent *float64
 	jurisdiction string
 
@@ -459,5 +463,44 @@ func (link *Link) Jurisdiction() string {
 func WithJurisdiction(jurisdiction string) func(*Link) {
 	return func(link *Link) {
 		link.jurisdiction = jurisdiction
+	}
+}
+
+// BikeFacility returns the supplied bicycle infrastructure, or an empty string when absent.
+func (link *Link) BikeFacility() string {
+	return link.bikeFacility
+}
+
+// WithBikeFacility stores the bicycle infrastructure; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithBikeFacility(bikeFacility string) func(*Link) {
+	return func(link *Link) {
+		link.bikeFacility = bikeFacility
+	}
+}
+
+// PedFacility returns the supplied pedestrian infrastructure, or an empty string when absent.
+func (link *Link) PedFacility() string {
+	return link.pedFacility
+}
+
+// WithPedFacility stores the pedestrian infrastructure; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithPedFacility(pedFacility string) func(*Link) {
+	return func(link *Link) {
+		link.pedFacility = pedFacility
+	}
+}
+
+// Parking returns the supplied curbside parking type, or an empty string when absent.
+func (link *Link) Parking() string {
+	return link.parking
+}
+
+// WithParking stores the curbside parking type; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithParking(parking string) func(*Link) {
+	return func(link *Link) {
+		link.parking = parking
 	}
 }

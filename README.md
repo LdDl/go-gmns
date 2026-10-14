@@ -180,6 +180,9 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
+| `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
+| `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
+| `parking` | string | Curbside parking type; empty if not supplied |
 | `osm_way_id` | int64 | Original OpenStreetMap way ID |
 | `source_osm_node_id` | int64 | Source OSM node ID |
 | `target_osm_node_id` | int64 | Target OSM node ID |
@@ -197,7 +200,9 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `name` | string | Road name from OSM |
 | `geom` | WKT | LineString geometry in WKT format |
 
-All three link models can store an optional shared geometry ID and direction flag independently of the travel-oriented line. Shared geometry table export for meso/micro remains pending. See the note in the micro link section for more details about thouse specific fields.
+All three link models can store an optional shared geometry ID and direction flag independently of the travel-oriented line. Shared geometry table export for meso/micro remains pending.
+
+Bicycle/pedestrian facilities and parking describe infrastructure independently of allowed agents. Suggested category constants are available in `gmns/types`; custom strings are supported. Empty values, `none` and `unknown` remain distinct. See the note in the micro link section for more details about thouse specific fields.
 
 ### Movements
 
@@ -285,6 +290,9 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
+| `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
+| `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
+| `parking` | string | Curbside parking type; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `segment_idx` | int | Segment index within macro link |
@@ -341,6 +349,9 @@ The microscopic network provides cell-based representation for detailed simulati
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `jurisdiction` | string | Supplied road owner/operator; empty if not supplied |
+| `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
+| `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
+| `parking` | string | Curbside parking type; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `macro_node_id` | int64 | Associated macro node (-1 for road cells) |

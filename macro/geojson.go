@@ -25,6 +25,9 @@ func (link *Link) GeoFeature() *geojson.Feature {
 		f.Properties["grade"] = grade
 	}
 	f.Properties["jurisdiction"] = link.Jurisdiction()
+	f.Properties["bike_facility"] = link.BikeFacility()
+	f.Properties["ped_facility"] = link.PedFacility()
+	f.Properties["parking"] = link.Parking()
 	f.Properties["osm_way_id"] = link.OSMWay()
 	f.Properties["source_osm_node_id"] = link.SourceOSMNode()
 	f.Properties["target_osm_node_id"] = link.TargetOSMNode()

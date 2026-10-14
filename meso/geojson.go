@@ -26,6 +26,9 @@ func (link *Link) GeoFeature() *geojson.Feature {
 		f.Properties["grade"] = grade
 	}
 	f.Properties["jurisdiction"] = link.Jurisdiction()
+	f.Properties["bike_facility"] = link.BikeFacility()
+	f.Properties["ped_facility"] = link.PedFacility()
+	f.Properties["parking"] = link.Parking()
 	f.Properties["macro_node_id"] = link.MacroNode()
 	f.Properties["macro_link_id"] = link.MacroLink()
 	f.Properties["link_type"] = link.LinkType().String()
