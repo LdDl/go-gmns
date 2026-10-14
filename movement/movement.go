@@ -60,10 +60,11 @@ type Movement struct {
 	sourceOsmNodeID osm.NodeID
 	targetOsmNodeID osm.NodeID
 
-	mType       MovementType
-	mTextID     MovementCompositeType
-	controlType types.ControlType
-	lanesNum    int
+	mType          MovementType
+	mTextID        MovementCompositeType
+	controlType    types.ControlType
+	lanesNum       int
+	penaltySeconds *float64
 }
 
 // NewMovement creates pointer to the new Movement
@@ -207,6 +208,22 @@ func (mvmt *Movement) ControlType() types.ControlType {
 // LanesNum returns number of lanes. Outputs "-1" if it was not set.
 func (mvmt *Movement) LanesNum() int {
 	return mvmt.lanesNum
+}
+
+// Penalty returns the turn penalty in seconds and whether it was supplied.
+func (mvmt *Movement) Penalty() (float64, bool) {
+	if mvmt.penaltySeconds == nil {
+		return 0, false
+	}
+	return *mvmt.penaltySeconds, true
+}
+
+// WithPenalty sets the turn penalty in seconds, including an explicit zero.
+func WithPenalty(seconds float64) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := seconds
+		mvmt.penaltySeconds = &value
+	}
 }
 
 // WithLinkName sets alias for the movement

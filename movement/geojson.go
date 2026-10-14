@@ -24,7 +24,11 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f.Properties["from_osm_node_id"] = mvmt.OSMNodeSource()
 	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTarget()
 	f.Properties["type"] = mvmt.Type()
-	f.Properties["penalty"] = -1  // @todo: future works
+	penalty, hasPenalty := mvmt.Penalty()
+	f.Properties["penalty"] = nil
+	if hasPenalty {
+		f.Properties["penalty"] = penalty
+	}
 	f.Properties["capacity"] = -1 // @todo: future works
 	f.Properties["control_type"] = mvmt.ControlType().String()
 	f.Properties["movement_composite_type"] = mvmt.MvmtTextID().String()
