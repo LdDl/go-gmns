@@ -38,7 +38,7 @@ type Link struct {
 	osmWayID           osm.WayID
 	sourceOsmNodeID    osm.NodeID
 	targetOsmNodeID    osm.NodeID
-	lanesNum           int
+	lanesNum           *int
 	capacity           *float64
 	linkClass          types.LinkClass
 	linkType           types.LinkType
@@ -63,7 +63,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		osmWayID:           osm.WayID(-1),
 		sourceOsmNodeID:    osm.NodeID(-1),
 		targetOsmNodeID:    osm.NodeID(-1),
-		lanesNum:           -1,
 		linkClass:          types.LINK_CLASS_UNDEFINED,
 		linkType:           types.LINK_UNDEFINED,
 		linkConnectionType: types.NOT_A_LINK,
@@ -124,7 +123,11 @@ func (link *Link) GetOutcomingLaneIndices() []int {
 	if idx < 0 {
 		return make([]int, 0)
 	}
-	return laneIndices(link.lanesNum, lanesInfo.LanesChange[idx][0], lanesInfo.LanesChange[idx][1])
+	lanesNum, hasLanes := link.LanesNum()
+	if !hasLanes || lanesNum < 0 {
+		return make([]int, 0)
+	}
+	return laneIndices(lanesNum, lanesInfo.LanesChange[idx][0], lanesInfo.LanesChange[idx][1])
 }
 
 // Name returns link alias.
@@ -217,9 +220,12 @@ func (link *Link) TargetOSMNode() osm.NodeID {
 	return link.targetOsmNodeID
 }
 
-// LanesNum returns number of lanes. Outputs "-1" if it was not set.
-func (link *Link) LanesNum() int {
-	return link.lanesNum
+// LanesNum returns the supplied permanent lane count and whether it is set.
+func (link *Link) LanesNum() (int, bool) {
+	if link.lanesNum == nil {
+		return 0, false
+	}
+	return *link.lanesNum, true
 }
 
 // Capacity returns the supplied saturation capacity in PCE/hour/lane and whether it is set.
@@ -370,7 +376,8 @@ func WithTargetOSMNodeID(osmNodeID osm.NodeID) func(*Link) {
 // WithLanesNum sets number of lanes for the link
 func WithLanesNum(lanesNum int) func(*Link) {
 	return func(link *Link) {
-		link.lanesNum = lanesNum
+		value := lanesNum
+		link.lanesNum = &value
 	}
 }
 

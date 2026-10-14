@@ -46,7 +46,11 @@ func (link *Link) GeoFeature() *geojson.Feature {
 		allowedAgentTypesStrs[i] = agentType.String()
 	}
 	f.Properties["allowed_agent_types"] = strings.Join(allowedAgentTypesStrs, ",")
-	f.Properties["lanes_num"] = link.LanesNum()
+	lanesNum, hasLanes := link.LanesNum()
+	f.Properties["lanes_num"] = nil
+	if hasLanes {
+		f.Properties["lanes_num"] = lanesNum
+	}
 	freeSpeed, hasFreeSpeed := link.FreeSpeed()
 	f.Properties["free_speed"] = nil
 	if hasFreeSpeed {

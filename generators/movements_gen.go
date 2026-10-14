@@ -15,6 +15,10 @@ func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = requireMacroLaneData(macroNet)
+	if err != nil {
+		return nil, err
+	}
 
 	ans := movement.NewMovementsStorage()
 	// Sort node IDs for deterministic iteration

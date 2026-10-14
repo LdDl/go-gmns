@@ -106,10 +106,12 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 		return
 	}
 	for linkID, original := range macroNet.Links {
+		lanesNum, hasLanes := original.LanesNum()
+		assert.True(t, hasLanes)
 		macroNet.Links[linkID] = macro.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 			macro.WithLineGeom(original.Geom()),
 			macro.WithLineGeomEuclidean(original.GeomEuclidean()),
-			macro.WithLanesNum(original.LanesNum()),
+			macro.WithLanesNum(lanesNum),
 			macro.WithLanesInfo(original.LanesInfo()),
 			macro.WithAllowedAgentTypes(original.AllowedAgentTypes()),
 		)
@@ -120,10 +122,12 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 			continue
 		}
 		connectorCount++
+		lanesNum, hasLanes := original.LanesNum()
+		assert.True(t, hasLanes)
 		mesoNet.Links[linkID] = meso.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 			meso.WithLineMacroNodeID(original.MacroNode()),
 			meso.WithLineMacroLinkID(-1),
-			meso.WithLanesNum(original.LanesNum()),
+			meso.WithLanesNum(lanesNum),
 			meso.WithMovementID(original.Movement()),
 			meso.WithMovementMesoLinkIncome(original.MovementMesoLinkIncome()),
 			meso.WithMovementMesoLinkOutcome(original.MovementMesoLinkOutcome()),

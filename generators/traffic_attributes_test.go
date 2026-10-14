@@ -88,13 +88,15 @@ func TestTrafficAttributesSurviveGeneration(t *testing.T) {
 			}
 			for linkID, expected := range expectedByMacroLink {
 				original := network.Links[linkID]
+				lanesNum, hasLanes := original.LanesNum()
+				assert.True(t, hasLanes)
 				lengthMeters, hasLength := original.LengthMeters()
 				assert.True(t, hasLength)
 				link := macro.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 					macro.WithLineGeom(original.Geom().Clone()),
 					macro.WithLineGeomEuclidean(original.GeomEuclidean().Clone()),
 					macro.WithLengthMeters(lengthMeters),
-					macro.WithLanesNum(original.LanesNum()),
+					macro.WithLanesNum(lanesNum),
 					macro.WithLanesInfo(original.LanesInfo()),
 					macro.WithAllowedAgentTypes(original.AllowedAgentTypes()),
 				)

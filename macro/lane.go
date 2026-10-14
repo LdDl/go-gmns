@@ -29,8 +29,15 @@ func NewLanesInfo(link *Link) (LanesInfo, error) {
 	if lengthMeters <= 0 || math.IsNaN(lengthMeters) || math.IsInf(lengthMeters, 0) {
 		return LanesInfo{}, fmt.Errorf("macro link %d: lane preparation requires a positive finite length, got %g", link.ID, lengthMeters)
 	}
+	lanesNum, hasLanes := link.LanesNum()
+	if !hasLanes {
+		return LanesInfo{}, fmt.Errorf("macro link %d: lane count is required to prepare lane information", link.ID)
+	}
+	if lanesNum < 0 {
+		return LanesInfo{}, fmt.Errorf("macro link %d: lane count must be nonnegative, got %d", link.ID, lanesNum)
+	}
 	lanesInfo := LanesInfo{
-		LanesList: []int{link.LanesNum()},
+		LanesList: []int{lanesNum},
 		LanesChange: [][2]int{
 			{0, 0},
 		},

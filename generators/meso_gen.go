@@ -74,6 +74,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	if err != nil {
 		return nil, err
 	}
+	err = requireMacroLaneData(macroNet)
+	if err != nil {
+		return nil, err
+	}
 
 	if VERBOSE {
 		log.Info().Str("scope", "gen_meso").Msg("Preparing mesoscopic network")

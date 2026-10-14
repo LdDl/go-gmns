@@ -99,3 +99,60 @@ func TestNewLanesInfoRejectsNilLink(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, LanesInfo{}, laneInfo)
 }
+
+type preparedLaneCountCase struct {
+	name string
+	value int
+	present bool
+	valid bool
+}
+
+func TestNewLanesInfoRequiresLaneCount(t *testing.T) {
+	cases := []preparedLaneCountCase{
+		{
+			name: "absent",
+		},
+		{
+			name: "negative",
+			value: -1,
+			present: true,
+		},
+		{
+			name: "zero motor lanes",
+			present: true,
+			valid: true,
+		},
+		{
+			name: "two motor lanes",
+			value: 2,
+			present: true,
+			valid: true,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			link := NewLinkFrom(10, 1, 2, WithLengthMeters(50))
+			if testCase.present {
+				WithLanesNum(testCase.value)(link)
+			}
+			laneInfo, err := NewLanesInfo(link)
+			if testCase.valid {
+				assert.NoError(t, err)
+				assert.Equal(t, []int{testCase.value}, laneInfo.LanesList)
+				assert.Equal(t, []float64{0, 50}, laneInfo.LanesChangePoints)
+				assert.Equal(t, [][2]int{{0, 0}}, laneInfo.LanesChange)
+			} else {
+				assert.Error(t, err)
+				if err != nil {
+					assert.Contains(t, err.Error(), "macro link 10")
+					assert.Contains(t, err.Error(), "lane count")
+				}
+				assert.Equal(t, LanesInfo{}, laneInfo)
+			}
+			value, present := link.LanesNum()
+			assert.Equal(t, testCase.value, value)
+			assert.Equal(t, testCase.present, present)
+			assert.Equal(t, LanesInfo{}, link.LanesInfo())
+		})
+	}
+}

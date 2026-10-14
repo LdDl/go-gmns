@@ -29,7 +29,7 @@ type Link struct {
 	geomEuclidean orb.LineString
 	geometryID    *gmns.GeometryID
 	dirFlag       *gmns.DirectionFlag
-	lanesNum      int
+	lanesNum      *int
 	lanesChange   [2]int
 
 	lengthMeters *float64
@@ -68,7 +68,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		ID:            id,
 		geom:          orb.LineString{},
 		geomEuclidean: orb.LineString{},
-		lanesNum:      -1,
 		lanesChange:   [2]int{0, 0},
 		sourceNodeID:  sourceNodeID,
 		targetNodeID:  targetNodeID,
@@ -121,9 +120,12 @@ func (link *Link) DirFlag() (gmns.DirectionFlag, bool) {
 	return *link.dirFlag, true
 }
 
-// LanesNum returns number of lanes. Outputs "-1" if it was not set.
-func (link *Link) LanesNum() int {
-	return link.lanesNum
+// LanesNum returns the supplied permanent lane count and whether it is set.
+func (link *Link) LanesNum() (int, bool) {
+	if link.lanesNum == nil {
+		return 0, false
+	}
+	return *link.lanesNum, true
 }
 
 func (link *Link) LanesChange() [2]int {
@@ -246,7 +248,8 @@ func WithLineGeomEuclidean(geomEuclidean orb.LineString) func(*Link) {
 // WithLanesNum sets number of lanes for the link
 func WithLanesNum(lanesNum int) func(*Link) {
 	return func(link *Link) {
-		link.lanesNum = lanesNum
+		value := lanesNum
+		link.lanesNum = &value
 	}
 }
 
