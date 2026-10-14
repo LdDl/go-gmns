@@ -8,7 +8,7 @@ import (
 
 // GeoFeature returns GeoJSON LineString feature for the given movement
 func (mvmt *Movement) GeoFeature() *geojson.Feature {
-	f := geojson.NewFeature(nil)
+	f := geojson.NewFeature(mvmt.Geom())
 	f.ID = mvmt.ID
 	f.Properties["id"] = mvmt.ID
 	f.Properties["node_id"] = mvmt.MacroNode()

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/paulmach/orb/geojson"
+	"github.com/stretchr/testify/assert"
 )
 
 type penaltyCase struct {
@@ -47,28 +48,25 @@ func TestPenaltyGeoJSON(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			mvmt := NewMovement(1, 2, 3, 4, MOVEMENT_SBT, MOVEMENT_TYPE_THRU, testCase.options...)
 			data, err := json.Marshal(mvmt.GeoFeature())
+			assert.NoError(t, err)
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			feature, err := geojson.UnmarshalFeature(data)
+			assert.NoError(t, err)
 			if err != nil {
-				t.Fatal(err)
+				return
 			}
 			value, exists := feature.Properties["penalty"]
-			if !exists {
-				t.Fatal("penalty property is missing")
-			}
+			assert.True(t, exists, "penalty property is missing")
 			if testCase.present {
-				if value != testCase.want {
-					t.Fatalf("exported penalty = %v, want %v", value, testCase.want)
-				}
-			} else if value != nil {
-				t.Fatalf("absent penalty = %v, want null", value)
+				assert.Equal(t, testCase.want, value, "exported penalty")
+			} else {
+				assert.Nil(t, value, "absent penalty must be null")
 			}
 			penalty, present := mvmt.Penalty()
-			if penalty != testCase.want || present != testCase.present {
-				t.Fatalf("penalty after export = (%v, %t), want (%v, %t)", penalty, present, testCase.want, testCase.present)
-			}
+			assert.Equal(t, testCase.want, penalty, "penalty after export")
+			assert.Equal(t, testCase.present, present, "penalty presence after export")
 		})
 	}
 }
