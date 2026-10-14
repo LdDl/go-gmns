@@ -348,6 +348,8 @@ The microscopic network provides cell-based representation for detailed simulati
 
 ### Entity relationships
 
+Each network provides `ValidateParentReferences()` to check that supplied parent node/link IDs resolve within that network. It returns an error identifying the invalid reference and does not modify the graph. This check is called explicitly and does not validate the full topology.
+
 ```mermaid
 erDiagram
     MacroNode ||--o{ MacroLink : "source/target"
