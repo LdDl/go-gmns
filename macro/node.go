@@ -9,6 +9,8 @@ import (
 
 // Node representation of a vertex in a macroscopic graph
 type Node struct {
+	nodeType string
+
 	incomingLinks  []gmns.LinkID
 	outcomingLinks []gmns.LinkID
 
@@ -227,5 +229,17 @@ func WithPointGeom(geom orb.Point) func(*Node) {
 func WithPointGeomEuclidean(geomEuclidean orb.Point) func(*Node) {
 	return func(node *Node) {
 		node.geomEuclidean = geomEuclidean
+	}
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
 	}
 }

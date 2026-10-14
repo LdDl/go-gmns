@@ -39,6 +39,7 @@ func (link *Link) GeoFeature() *geojson.Feature {
 // GeoFeature returns GeoJSON Point feature for the given node
 func (node *Node) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(node.Geom())
+	f.Properties["node_type"] = node.NodeType()
 	f.ID = node.ID
 	f.Properties["id"] = node.ID
 	f.Properties["osm_node_id"] = node.OSMNode()
