@@ -50,21 +50,21 @@ type Movement struct {
 	macroNodeID                              gmns.NodeID
 	incomeMacroLinkID                        gmns.LinkID
 	startIncomeLaneSeqID, endIncomeLaneSeqID int
-	incomeLaneStart, incomeLaneEnd           int
+	incomeLaneStart, incomeLaneEnd           *int
 
 	outcomeMacroLinkID                         gmns.LinkID
 	startOutcomeLaneSeqID, endOutcomeLaneSeqID int
-	outcomeLaneStart, outcomeLaneEnd           int
+	outcomeLaneStart, outcomeLaneEnd           *int
 
 	osmNodeID       osm.NodeID
 	sourceOsmNodeID osm.NodeID
 	targetOsmNodeID osm.NodeID
 
-	mType             MovementType
-	mTextID           MovementCompositeType
-	controlType       types.ControlType
-	lanesNum          int
-	penaltySeconds    *float64
+	mType              MovementType
+	mTextID            MovementCompositeType
+	controlType        types.ControlType
+	lanesNum           int
+	penaltySeconds     *float64
 	capacityPCEPerHour *float64
 }
 
@@ -80,13 +80,9 @@ func NewMovement(id gmns.MovementID, macroNodeID gmns.NodeID, incomeMacroLinkID,
 		incomeMacroLinkID:     incomeMacroLinkID,
 		startIncomeLaneSeqID:  -1,
 		endIncomeLaneSeqID:    -1,
-		incomeLaneStart:       -1,
-		incomeLaneEnd:         -1,
 		outcomeMacroLinkID:    outcomeMacroLinkID,
 		startOutcomeLaneSeqID: -1,
 		endOutcomeLaneSeqID:   -1,
-		outcomeLaneStart:      -1,
-		outcomeLaneEnd:        -1,
 		osmNodeID:             osm.NodeID(-1),
 		sourceOsmNodeID:       osm.NodeID(-1),
 		targetOsmNodeID:       osm.NodeID(-1),
@@ -141,14 +137,20 @@ func (mvmt *Movement) EndIncomeLaneSeqID() int {
 	return mvmt.endIncomeLaneSeqID
 }
 
-// IncomeLaneStart returns first lane of the income link. Outputs "-1" if it was not set.
-func (mvmt *Movement) IncomeLaneStart() int {
-	return mvmt.incomeLaneStart
+// IncomeLaneStart returns the first lane number of the income link and whether it was supplied.
+func (mvmt *Movement) IncomeLaneStart() (int, bool) {
+	if mvmt.incomeLaneStart == nil {
+		return 0, false
+	}
+	return *mvmt.incomeLaneStart, true
 }
 
-// IncomeLaneEnd returns last lane of the income link. Outputs "-1" if it was not set.
-func (mvmt *Movement) IncomeLaneEnd() int {
-	return mvmt.incomeLaneEnd
+// IncomeLaneEnd returns the last lane number of the income link and whether it was supplied.
+func (mvmt *Movement) IncomeLaneEnd() (int, bool) {
+	if mvmt.incomeLaneEnd == nil {
+		return 0, false
+	}
+	return *mvmt.incomeLaneEnd, true
 }
 
 // OutcomeMacroLink returns outcome macro link. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
@@ -166,14 +168,20 @@ func (mvmt *Movement) EndOutcomeLaneSeqID() int {
 	return mvmt.endOutcomeLaneSeqID
 }
 
-// OutcomeLaneStart returns first lane of the outcome link. Outputs "-1" if it was not set.
-func (mvmt *Movement) OutcomeLaneStart() int {
-	return mvmt.outcomeLaneStart
+// OutcomeLaneStart returns the first lane number of the outcome link and whether it was supplied.
+func (mvmt *Movement) OutcomeLaneStart() (int, bool) {
+	if mvmt.outcomeLaneStart == nil {
+		return 0, false
+	}
+	return *mvmt.outcomeLaneStart, true
 }
 
-// OutcomeLaneEnd returns last lane of the outcome link. Outputs "-1" if it was not set.
-func (mvmt *Movement) OutcomeLaneEnd() int {
-	return mvmt.outcomeLaneEnd
+// OutcomeLaneEnd returns the last lane number of the outcome link and whether it was supplied.
+func (mvmt *Movement) OutcomeLaneEnd() (int, bool) {
+	if mvmt.outcomeLaneEnd == nil {
+		return 0, false
+	}
+	return *mvmt.outcomeLaneEnd, true
 }
 
 // OSMNode returns OSM node identifier. Outputs "-1" if it was not set.
@@ -295,11 +303,28 @@ func WithIncomeLaneSequence(startIdx, endIdx int) func(*Movement) {
 	}
 }
 
-// WithIncomeLane sets start and end index for the lane of outcome macro link
+// WithIncomeLane sets both lane numbers of the income macro link, including negative numbers.
 func WithIncomeLane(start, end int) func(*Movement) {
 	return func(mvmt *Movement) {
-		mvmt.incomeLaneStart = start
-		mvmt.incomeLaneEnd = end
+		startValue, endValue := start, end
+		mvmt.incomeLaneStart = &startValue
+		mvmt.incomeLaneEnd = &endValue
+	}
+}
+
+// WithIncomeLaneStart sets the first lane number without changing the last lane number.
+func WithIncomeLaneStart(lane int) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := lane
+		mvmt.incomeLaneStart = &value
+	}
+}
+
+// WithIncomeLaneEnd sets the last lane number without changing the first lane number.
+func WithIncomeLaneEnd(lane int) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := lane
+		mvmt.incomeLaneEnd = &value
 	}
 }
 
@@ -319,11 +344,28 @@ func WithOutcomeLaneSequence(startIdx int, endIdx int) func(*Movement) {
 	}
 }
 
-// WithOutcomeLane sets start and end index for the lane of outcome macro link
+// WithOutcomeLane sets both lane numbers of the outcome macro link, including negative numbers.
 func WithOutcomeLane(start, end int) func(*Movement) {
 	return func(mvmt *Movement) {
-		mvmt.outcomeLaneStart = start
-		mvmt.outcomeLaneEnd = end
+		startValue, endValue := start, end
+		mvmt.outcomeLaneStart = &startValue
+		mvmt.outcomeLaneEnd = &endValue
+	}
+}
+
+// WithOutcomeLaneStart sets the first lane number without changing the last lane number.
+func WithOutcomeLaneStart(lane int) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := lane
+		mvmt.outcomeLaneStart = &value
+	}
+}
+
+// WithOutcomeLaneEnd sets the last lane number without changing the first lane number.
+func WithOutcomeLaneEnd(lane int) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := lane
+		mvmt.outcomeLaneEnd = &value
 	}
 }
 

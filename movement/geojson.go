@@ -15,11 +15,27 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f.Properties["osm_node_id"] = mvmt.OSMNode()
 	f.Properties["name"] = mvmt.Name()
 	f.Properties["in_link_id"] = mvmt.IncomeMacroLink()
-	f.Properties["in_lane_start"] = mvmt.IncomeLaneStart()
-	f.Properties["in_lane_end"] = mvmt.IncomeLaneEnd()
+	incomeLaneStart, hasIncomeLaneStart := mvmt.IncomeLaneStart()
+	f.Properties["in_lane_start"] = nil
+	if hasIncomeLaneStart {
+		f.Properties["in_lane_start"] = incomeLaneStart
+	}
+	incomeLaneEnd, hasIncomeLaneEnd := mvmt.IncomeLaneEnd()
+	f.Properties["in_lane_end"] = nil
+	if hasIncomeLaneEnd {
+		f.Properties["in_lane_end"] = incomeLaneEnd
+	}
 	f.Properties["out_link_id"] = mvmt.OutcomeMacroLink()
-	f.Properties["out_lane_start"] = mvmt.OutcomeLaneStart()
-	f.Properties["out_lane_end"] = mvmt.OutcomeLaneEnd()
+	outcomeLaneStart, hasOutcomeLaneStart := mvmt.OutcomeLaneStart()
+	f.Properties["out_lane_start"] = nil
+	if hasOutcomeLaneStart {
+		f.Properties["out_lane_start"] = outcomeLaneStart
+	}
+	outcomeLaneEnd, hasOutcomeLaneEnd := mvmt.OutcomeLaneEnd()
+	f.Properties["out_lane_end"] = nil
+	if hasOutcomeLaneEnd {
+		f.Properties["out_lane_end"] = outcomeLaneEnd
+	}
 	f.Properties["lanes_num"] = mvmt.LanesNum()
 	f.Properties["from_osm_node_id"] = mvmt.OSMNodeSource()
 	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTarget()

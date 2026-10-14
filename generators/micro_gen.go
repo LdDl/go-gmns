@@ -888,10 +888,23 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 			}
 
 			// Collect lanes info from movement
-			incomeLaneStart := mvmt.IncomeLaneStart()
-			incomeLaneEnd := mvmt.IncomeLaneEnd()
-			outcomeLaneStart := mvmt.OutcomeLaneStart()
-			outcomeLaneEnd := mvmt.OutcomeLaneEnd()
+			incomeLaneStart, hasIncomeLaneStart := mvmt.IncomeLaneStart()
+			incomeLaneEnd, hasIncomeLaneEnd := mvmt.IncomeLaneEnd()
+			outcomeLaneStart, hasOutcomeLaneStart := mvmt.OutcomeLaneStart()
+			outcomeLaneEnd, hasOutcomeLaneEnd := mvmt.OutcomeLaneEnd()
+			if !hasIncomeLaneStart || !hasOutcomeLaneStart {
+				continue
+			}
+			// An omitted endpoint denotes a single lane without changing the stored movement.
+			if !hasIncomeLaneEnd {
+				incomeLaneEnd = incomeLaneStart
+			}
+			if !hasOutcomeLaneEnd {
+				outcomeLaneEnd = outcomeLaneStart
+			}
+			if incomeLaneEnd < incomeLaneStart || outcomeLaneEnd < outcomeLaneStart {
+				continue
+			}
 
 			// Build lane arrays
 			var incomeLanes, outcomeLanes []int
