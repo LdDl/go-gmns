@@ -152,6 +152,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique node identifier |
+| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `osm_node_id` | int64 | Original OpenStreetMap node ID |
 | `control_type` | string | Traffic control type at node: `none`, `yield`, `stop`, `signal`, `signal_minor_stop`, `signal_minor_yield` |
@@ -171,6 +172,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique link identifier |
+| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
 | `source_node` | int64 | Source node ID |
 | `target_node` | int64 | Target node ID |
 | `osm_way_id` | int64 | Original OpenStreetMap way ID |
@@ -253,6 +255,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique meso node identifier |
+| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `name` | string | Supplied node name; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
@@ -268,6 +271,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique meso link identifier |
+| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
 | `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source meso node ID |
 | `target_node` | int64 | Target meso node ID |
@@ -300,6 +304,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique micro node identifier |
+| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `name` | string | Supplied node name; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
@@ -317,6 +322,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | int64 | Unique micro link identifier |
+| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
 | `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source micro node ID |
 | `target_node` | int64 | Target micro node ID |
