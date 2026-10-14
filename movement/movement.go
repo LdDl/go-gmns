@@ -60,11 +60,12 @@ type Movement struct {
 	sourceOsmNodeID osm.NodeID
 	targetOsmNodeID osm.NodeID
 
-	mType          MovementType
-	mTextID        MovementCompositeType
-	controlType    types.ControlType
-	lanesNum       int
-	penaltySeconds *float64
+	mType             MovementType
+	mTextID           MovementCompositeType
+	controlType       types.ControlType
+	lanesNum          int
+	penaltySeconds    *float64
+	capacityPCEPerHour *float64
 }
 
 // NewMovement creates pointer to the new Movement
@@ -216,6 +217,22 @@ func (mvmt *Movement) Penalty() (float64, bool) {
 		return 0, false
 	}
 	return *mvmt.penaltySeconds, true
+}
+
+// Capacity returns saturation capacity in passenger car equivalents per hour and whether it was supplied.
+func (mvmt *Movement) Capacity() (float64, bool) {
+	if mvmt.capacityPCEPerHour == nil {
+		return 0, false
+	}
+	return *mvmt.capacityPCEPerHour, true
+}
+
+// WithCapacity sets saturation capacity for the whole movement in passenger car equivalents per hour.
+func WithCapacity(capacityPCEPerHour float64) func(*Movement) {
+	return func(mvmt *Movement) {
+		value := capacityPCEPerHour
+		mvmt.capacityPCEPerHour = &value
+	}
 }
 
 // WithPenalty sets the turn penalty in seconds, including an explicit zero.

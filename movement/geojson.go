@@ -29,7 +29,11 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	if hasPenalty {
 		f.Properties["penalty"] = penalty
 	}
-	f.Properties["capacity"] = -1 // @todo: future works
+	capacity, hasCapacity := mvmt.Capacity()
+	f.Properties["capacity"] = nil
+	if hasCapacity {
+		f.Properties["capacity"] = capacity
+	}
 	f.Properties["control_type"] = mvmt.ControlType().String()
 	f.Properties["movement_composite_type"] = mvmt.MvmtTextID().String()
 	f.Properties["volume"] = -1     // @todo: future works
