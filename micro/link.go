@@ -9,6 +9,8 @@ import (
 
 // Link represents a microscopic network link (cell)
 type Link struct {
+	directed bool
+
 	parentLinkID *gmns.LinkID
 
 	name string
@@ -50,6 +52,7 @@ type Link struct {
 // NewLinkFrom creates pointer to the new microscopic Link
 func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
 	newLink := &Link{
+		directed:              true,
 		ID:                    id,
 		geom:                  orb.LineString{},
 		geomEuclidean:         orb.LineString{},
@@ -353,5 +356,18 @@ func WithDirFlag(dirFlag gmns.DirectionFlag) func(*Link) {
 	return func(link *Link) {
 		value := dirFlag
 		link.dirFlag = &value
+	}
+}
+
+// Directed reports whether travel is restricted to source-to-target direction.
+func (link *Link) Directed() bool {
+	return link.directed
+}
+
+// WithDirected sets whether the link is directed. NewLinkFrom defaults to true.
+// It does not change geometry, endpoints or source-road bidirectionality.
+func WithDirected(directed bool) func(*Link) {
+	return func(link *Link) {
+		link.directed = directed
 	}
 }

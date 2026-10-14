@@ -19,6 +19,7 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	}
 	f.Properties["source_node"] = link.SourceNode()
 	f.Properties["target_node"] = link.TargetNode()
+	f.Properties["directed"] = link.Directed()
 	f.Properties["macro_node_id"] = link.MacroNode()
 	f.Properties["macro_link_id"] = link.MacroLink()
 	f.Properties["link_type"] = link.LinkType().String()

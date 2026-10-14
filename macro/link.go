@@ -9,6 +9,8 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	directed bool
+
 	parentLinkID *gmns.LinkID
 
 	lanesInfo          LanesInfo
@@ -39,6 +41,7 @@ type Link struct {
 // NewLinkFrom creates pointer to the new Link
 func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
 	newLink := &Link{
+		directed:           true,
 		lanesInfo:          LanesInfo{},
 		name:               "",
 		geom:               orb.LineString{},
@@ -411,5 +414,18 @@ func WithParentLinkID(parentLinkID gmns.LinkID) func(*Link) {
 	return func(link *Link) {
 		value := parentLinkID
 		link.parentLinkID = &value
+	}
+}
+
+// Directed reports whether travel is restricted to source-to-target direction.
+func (link *Link) Directed() bool {
+	return link.directed
+}
+
+// WithDirected sets whether the link is directed. NewLinkFrom defaults to true.
+// It does not change geometry, endpoints or source-road bidirectionality.
+func WithDirected(directed bool) func(*Link) {
+	return func(link *Link) {
+		link.directed = directed
 	}
 }

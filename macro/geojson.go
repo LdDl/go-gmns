@@ -18,6 +18,7 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	}
 	f.Properties["source_node"] = link.SourceNode()
 	f.Properties["target_node"] = link.TargetNode()
+	f.Properties["directed"] = link.Directed()
 	f.Properties["osm_way_id"] = link.OSMWay()
 	f.Properties["source_osm_node_id"] = link.SourceOSMNode()
 	f.Properties["target_osm_node_id"] = link.TargetOSMNode()
