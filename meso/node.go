@@ -8,6 +8,9 @@ import (
 )
 
 type Node struct {
+	name     string
+	nodeType string
+
 	ID gmns.NodeID
 
 	geom          orb.Point
@@ -153,5 +156,29 @@ func WithOutcomingLinks(linksIDs ...gmns.LinkID) func(*Node) {
 		for i := range linksIDs {
 			node.outcomingLinks.Set(linksIDs[i], struct{}{})
 		}
+	}
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
+	}
+}
+
+// Name returns the supplied node name, or an empty string when not supplied.
+func (node *Node) Name() string {
+	return node.name
+}
+
+// WithNodeName sets the node name; an empty string clears the value.
+func WithNodeName(name string) func(*Node) {
+	return func(node *Node) {
+		node.name = name
 	}
 }
