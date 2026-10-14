@@ -52,6 +52,15 @@ type mesoMicroMapping map[gmns.LinkID]map[int][]gmns.NodeID
 
 // GenerateMicroscopic generates microscopic network from macro and meso networks
 func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movement.MovementsStorage, opts ...MicroGenOptions) (*micro.Net, error) {
+	err := requireDirectedMacroLinks(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = requireDirectedMesoLinks(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+
 	options := DefaultMicroGenOptions()
 	if len(opts) > 0 {
 		options = opts[0]
@@ -84,7 +93,7 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	}
 
 	// Connect micro links through movements
-	err := connectMicroLinks(mesoNet, microNet, options)
+	err = connectMicroLinks(mesoNet, microNet, options)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect micro links")
 	}

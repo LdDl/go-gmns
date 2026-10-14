@@ -11,6 +11,11 @@ import (
 
 // GenerateMovements generates movements for the given macroscopic network
 func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
+	err := requireDirectedMacroLinks(macroNet)
+	if err != nil {
+		return nil, err
+	}
+
 	ans := movement.NewMovementsStorage()
 	// Sort node IDs for deterministic iteration
 	sortedNodeIDs := make([]gmns.NodeID, 0, len(macroNet.Nodes))

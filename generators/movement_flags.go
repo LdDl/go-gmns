@@ -25,7 +25,7 @@ type MovementFlags struct {
 }
 
 // ComputeMovementFlags calculates movement flags for macro network
-// based on topology, angles, and movement patterns
+// based on topology, angles, and movement patterns. Input links must be directed.
 func ComputeMovementFlags(macroNet *macro.Net, movements movement.MovementsStorage) *MovementFlags {
 	flags := &MovementFlags{
 		NodesNeedMovement:  make(map[gmns.NodeID]bool),

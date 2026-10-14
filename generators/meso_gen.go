@@ -66,6 +66,11 @@ type macroLinkProcessing struct {
 }
 
 func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
+	err := requireDirectedMacroLinks(macroNet)
+	if err != nil {
+		return nil, err
+	}
+
 	if VERBOSE {
 		log.Info().Str("scope", "gen_meso").Msg("Preparing mesoscopic network")
 	}

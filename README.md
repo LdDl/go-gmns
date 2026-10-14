@@ -118,6 +118,8 @@ go get github.com/LdDl/go-gmns
 - [x] **Mesoscopic data** - expands macro network to lane-level
 - [x] **Microscopic data** - cell-based decomposition of meso network
 
+The movement, meso and micro generators require directed input links and return an error identifying any undirected link. Two-way roads represented by two opposite directed links remain supported.
+
 ### Basic stuff
 
 - [x] **Types** (`gmns/types/`)
@@ -175,6 +177,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
 | `source_node` | int64 | Source node ID |
 | `target_node` | int64 | Target node ID |
+| `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `osm_way_id` | int64 | Original OpenStreetMap way ID |
 | `source_osm_node_id` | int64 | Source OSM node ID |
 | `target_osm_node_id` | int64 | Target OSM node ID |
@@ -277,6 +280,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source meso node ID |
 | `target_node` | int64 | Target meso node ID |
+| `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `segment_idx` | int | Segment index within macro link |
@@ -330,6 +334,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `name` | string | Supplied link name; empty if not supplied |
 | `source_node` | int64 | Source micro node ID |
 | `target_node` | int64 | Target micro node ID |
+| `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `macro_node_id` | int64 | Associated macro node (-1 for road cells) |
