@@ -100,7 +100,7 @@ func TestClearOptionalMovementFields(t *testing.T) {
 			assert.Nil(t, properties[testCase.property])
 			assert.Equal(t, MovementCompositeType("NER2"), first.MvmtTextID())
 			assert.Equal(t, MovementType("custom maneuver"), first.Type())
-			assert.Equal(t, second.MacroNode(), first.MacroNode())
+			assert.Equal(t, second.Node(), first.Node())
 			testCase.set(first)
 			assert.True(t, testCase.present(first))
 		})

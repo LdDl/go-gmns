@@ -28,10 +28,21 @@ func ParseMovementID(value string, kind IDType) (MovementID, error) {
 	return MovementID{value: parsed, kind: kind}, nil
 }
 
-func (identifier MovementID) String() string  { return identifier.value }
-func (identifier MovementID) Type() IDType    { return identifier.kind }
-func (identifier MovementID) IsZero() bool    { return identifier == (MovementID{}) }
-func (identifier MovementID) Validate() error { return validateID(identifier.value, identifier.kind) }
+func (identifier MovementID) String() string {
+	return identifier.value
+}
+
+func (identifier MovementID) Type() IDType {
+	return identifier.kind
+}
+
+func (identifier MovementID) IsZero() bool {
+	return identifier == (MovementID{})
+}
+
+func (identifier MovementID) Validate() error {
+	return validateID(identifier.value, identifier.kind)
+}
 
 // Int64 returns a numeric value only for integer IDs within the int64 range.
 func (identifier MovementID) Int64() (int64, bool) {

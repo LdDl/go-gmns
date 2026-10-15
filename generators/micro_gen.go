@@ -64,7 +64,7 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	if err != nil {
 		return nil, err
 	}
-	err = movements.ValidateReferences(macroNet)
+	err = macroNet.ValidateMovements(movements)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +79,13 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	err = movements.ValidateIDType(macroKind)
 	if err != nil {
 		return nil, err
+	}
+	err = requireSupportedMesoDataset(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	if macroNet.HasDetailedRecords() {
+		return nil, fmt.Errorf("%w: supplied macro lane/segment records", ErrUnsupportedGenerationInput)
 	}
 
 	options := DefaultMicroGenOptions()
@@ -136,6 +143,10 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 		fmt.Printf(" Done. Nodes: %v, Links: %v\n", len(microNet.Nodes), len(microNet.Links))
 	}
 
+	err = copyMesoCatalogs(mesoNet, microNet)
+	if err != nil {
+		return nil, err
+	}
 	return microNet, nil
 }
 
@@ -484,6 +495,7 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[0]]; ok {
 						node.SetUpstreamEnd(true)
+						copyMacroEndpoint(macroSourceNode, node)
 						zoneID, hasZone := macroSourceNode.Zone()
 						if hasZone {
 							node.SetZoneID(zoneID)
@@ -512,6 +524,7 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[len(nodeIDs)-1]]; ok {
 						node.SetDownstreamEnd(true)
+						copyMacroEndpoint(macroTargetNode, node)
 						zoneID, hasZone := macroTargetNode.Zone()
 						if hasZone {
 							node.SetZoneID(zoneID)
@@ -716,6 +729,7 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 		micro.WithMovementCompositeType(movement.MOVEMENT_UNDEFINED),
 	)
 
+	copyMesoRoadAttributes(mesoLink, link)
 	freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
 	if hasFreeSpeed {
 		micro.WithFreeSpeed(freeSpeed)(link)
@@ -854,6 +868,7 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 					micro.WithIsFirstMovementCell(isFirstMovement),
 					micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 				)
+				copyMesoRoadAttributes(mesoLink, link)
 				freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
 				if hasFreeSpeed {
 					micro.WithFreeSpeed(freeSpeed)(link)
@@ -895,6 +910,7 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 				micro.WithIsFirstMovementCell(isFirstMovement),
 				micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 			)
+			copyMesoRoadAttributes(mesoLink, link)
 			freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
 			if hasFreeSpeed {
 				micro.WithFreeSpeed(freeSpeed)(link)
@@ -981,7 +997,7 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 	})
 	for _, mvmtID := range sortedMvmtIDs {
 		mvmt := movements[mvmtID]
-		movementsByNode[mvmt.MacroNode()] = append(movementsByNode[mvmt.MacroNode()], mvmt)
+		movementsByNode[mvmt.Node()] = append(movementsByNode[mvmt.Node()], mvmt)
 	}
 
 	// Process each macro node (sorted for deterministic iteration)
@@ -1005,8 +1021,8 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 
 		// Process each movement
 		for _, mvmt := range nodeMvmts {
-			incomingMacroLinkID := mvmt.IncomeMacroLink()
-			outcomingMacroLinkID := mvmt.OutcomeMacroLink()
+			incomingMacroLinkID := mvmt.IncomeLink()
+			outcomingMacroLinkID := mvmt.OutcomeLink()
 
 			if _, ok := macroNet.Links[incomingMacroLinkID]; !ok {
 				continue

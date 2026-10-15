@@ -35,7 +35,7 @@ func ComputeMovementFlags(macroNet *macro.Net, movements movement.MovementsStora
 	// Group movements by macro node
 	macroNodesMovements := make(map[gmns.NodeID][]*movement.Movement)
 	for _, mvmt := range movements {
-		macroNodesMovements[mvmt.MacroNode()] = append(macroNodesMovements[mvmt.MacroNode()], mvmt)
+		macroNodesMovements[mvmt.Node()] = append(macroNodesMovements[mvmt.Node()], mvmt)
 	}
 
 	// Assume all nodes need movements by default (i.e. all are intersections)
@@ -89,7 +89,7 @@ func ComputeMovementFlags(macroNet *macro.Net, movements movement.MovementsStora
 			outcomingMacroLinksObserved := make(map[gmns.LinkID]struct{})
 			if macroNodeMvmts, ok := macroNodesMovements[macroNode.ID]; ok {
 				for _, mvmt := range macroNodeMvmts {
-					outcomeMacroLinkID := mvmt.OutcomeMacroLink()
+					outcomeMacroLinkID := mvmt.OutcomeLink()
 					if _, ok := outcomingMacroLinksObserved[outcomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break
@@ -135,7 +135,7 @@ func ComputeMovementFlags(macroNet *macro.Net, movements movement.MovementsStora
 			incomingMacroLinksObserved := make(map[gmns.LinkID]struct{})
 			if macroNodeMvmts, ok := macroNodesMovements[macroNode.ID]; ok {
 				for _, mvmt := range macroNodeMvmts {
-					incomeMacroLinkID := mvmt.IncomeMacroLink()
+					incomeMacroLinkID := mvmt.IncomeLink()
 					if _, ok := incomingMacroLinksObserved[incomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break

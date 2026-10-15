@@ -26,24 +26,34 @@ type referenceIDCase struct {
 func TestValidateReferencesWithExactIDs(t *testing.T) {
 	cases := []referenceIDCase{
 		{
-			name:    "missing endpoint",
-			prepare: func(net *Net) { delete(net.Nodes, gmns.NodeIDFromString("001")) },
+			name: "missing endpoint",
+			prepare: func(net *Net) {
+				delete(net.Nodes, gmns.NodeIDFromString("001"))
+			},
 		},
 		{
-			name:    "numeric reference cannot resolve a string key",
-			prepare: func(net *Net) { net.Links[gmns.LinkIDFromString("road-A")].SetSourceNode(gmns.NodeIDFromInt64(1)) },
+			name: "numeric reference cannot resolve a string key",
+			prepare: func(net *Net) {
+				net.Links[gmns.LinkIDFromString("road-A")].SetSourceNode(gmns.NodeIDFromInt64(1))
+			},
 		},
 		{
-			name:    "mismatched node key",
-			prepare: func(net *Net) { net.Nodes[gmns.NodeIDFromString("001")].ID = gmns.NodeIDFromString("other") },
+			name: "mismatched node key",
+			prepare: func(net *Net) {
+				net.Nodes[gmns.NodeIDFromString("001")].ID = gmns.NodeIDFromString("other")
+			},
 		},
 		{
-			name:    "mismatched link key",
-			prepare: func(net *Net) { net.Links[gmns.LinkIDFromString("road-A")].ID = gmns.LinkIDFromString("other") },
+			name: "mismatched link key",
+			prepare: func(net *Net) {
+				net.Links[gmns.LinkIDFromString("road-A")].ID = gmns.LinkIDFromString("other")
+			},
 		},
 		{
-			name:    "nil record",
-			prepare: func(net *Net) { net.Links[gmns.LinkIDFromString("road-A")] = nil },
+			name: "nil record",
+			prepare: func(net *Net) {
+				net.Links[gmns.LinkIDFromString("road-A")] = nil
+			},
 		},
 		{
 			name: "missing parent link",
@@ -52,8 +62,10 @@ func TestValidateReferencesWithExactIDs(t *testing.T) {
 			},
 		},
 		{
-			name:    "explicit absent ID is not a valid supplied zone reference",
-			prepare: func(net *Net) { WithZoneID(gmns.NodeID{})(net.Nodes[gmns.NodeIDFromString("001")]) },
+			name: "explicit absent ID is not a valid supplied zone reference",
+			prepare: func(net *Net) {
+				WithZoneID(gmns.NodeID{})(net.Nodes[gmns.NodeIDFromString("001")])
+			},
 		},
 	}
 	for _, testCase := range cases {

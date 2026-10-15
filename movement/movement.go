@@ -25,12 +25,12 @@ type Movement struct {
 	allowedAgentTypes []types.AgentType
 
 	ID                                       gmns.MovementID
-	macroNodeID                              gmns.NodeID
-	incomeMacroLinkID                        gmns.LinkID
+	nodeID                                   gmns.NodeID
+	incomeLinkID                             gmns.LinkID
 	startIncomeLaneSeqID, endIncomeLaneSeqID int
 	incomeLaneStart, incomeLaneEnd           *int
 
-	outcomeMacroLinkID                         gmns.LinkID
+	outcomeLinkID                              gmns.LinkID
 	startOutcomeLaneSeqID, endOutcomeLaneSeqID int
 	outcomeLaneStart, outcomeLaneEnd           *int
 
@@ -47,18 +47,18 @@ type Movement struct {
 }
 
 // NewMovement creates pointer to the new Movement
-func NewMovement(id gmns.MovementID, macroNodeID gmns.NodeID, incomeMacroLinkID, outcomeMacroLinkID gmns.LinkID, mvmtTxtID MovementCompositeType, mvmtType MovementType, options ...func(*Movement)) *Movement {
+func NewMovement(id gmns.MovementID, nodeID gmns.NodeID, incomeLinkID, outcomeLinkID gmns.LinkID, mvmtTxtID MovementCompositeType, mvmtType MovementType, options ...func(*Movement)) *Movement {
 	newMovement := &Movement{
 		name:                  "",
 		geom:                  orb.LineString{},
 		geomEuclidean:         orb.LineString{},
 		allowedAgentTypes:     []types.AgentType{},
 		ID:                    id,
-		macroNodeID:           macroNodeID,
-		incomeMacroLinkID:     incomeMacroLinkID,
+		nodeID:                nodeID,
+		incomeLinkID:          incomeLinkID,
 		startIncomeLaneSeqID:  -1,
 		endIncomeLaneSeqID:    -1,
-		outcomeMacroLinkID:    outcomeMacroLinkID,
+		outcomeLinkID:         outcomeLinkID,
 		startOutcomeLaneSeqID: -1,
 		endOutcomeLaneSeqID:   -1,
 		osmNodeID:             osm.NodeID(-1),
@@ -94,14 +94,14 @@ func (mvmt *Movement) AllowedAgentTypes() []types.AgentType {
 	return mvmt.allowedAgentTypes
 }
 
-// MacroNode returns parent macro node. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
-func (mvmt *Movement) MacroNode() gmns.NodeID {
-	return mvmt.macroNodeID
+// Node returns the junction ID in the owning network.
+func (mvmt *Movement) Node() gmns.NodeID {
+	return mvmt.nodeID
 }
 
-// IncomeMacroLink returns income macro link. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
-func (mvmt *Movement) IncomeMacroLink() gmns.LinkID {
-	return mvmt.incomeMacroLinkID
+// IncomeLink returns the inbound link ID in the owning network.
+func (mvmt *Movement) IncomeLink() gmns.LinkID {
+	return mvmt.incomeLinkID
 }
 
 // StartIncomeLaneSeqID returns first index of the income lane. Outputs "-1" if it was not set.
@@ -130,9 +130,9 @@ func (mvmt *Movement) IncomeLaneEnd() (int, bool) {
 	return *mvmt.incomeLaneEnd, true
 }
 
-// OutcomeMacroLink returns outcome macro link. Should not output "-1" (could lead to the problems during processing mesoscopic graph).
-func (mvmt *Movement) OutcomeMacroLink() gmns.LinkID {
-	return mvmt.outcomeMacroLinkID
+// OutcomeLink returns the outbound link ID in the owning network.
+func (mvmt *Movement) OutcomeLink() gmns.LinkID {
+	return mvmt.outcomeLinkID
 }
 
 // StartOutcomeLaneSeqID returns first index of the outcome lane. Outputs "-1" if it was not set.
@@ -257,17 +257,17 @@ func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Movement) 
 	}
 }
 
-// WithMacroNodeID sets parent macro node identifier. Should not be used since it necessary part of NewMovement(...).
-func WithMacroNodeID(nodeID gmns.NodeID) func(*Movement) {
+// WithNodeID changes the junction reference in the owning network.
+func WithNodeID(nodeID gmns.NodeID) func(*Movement) {
 	return func(mvmt *Movement) {
-		mvmt.macroNodeID = nodeID
+		mvmt.nodeID = nodeID
 	}
 }
 
-// WithIncomeMacroLinkID sets income macro link indetifier. Should not be used since it necessary part of NewMovement(...).
-func WithIncomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
+// WithIncomeLinkID changes the inbound link reference in the owning network.
+func WithIncomeLinkID(linkID gmns.LinkID) func(*Movement) {
 	return func(mvmt *Movement) {
-		mvmt.incomeMacroLinkID = linkID
+		mvmt.incomeLinkID = linkID
 	}
 }
 
@@ -305,10 +305,10 @@ func WithIncomeLaneEnd(lane int) func(*Movement) {
 	}
 }
 
-// WithOutcomeMacroLinkID sets outcome macro link indetifier. Should not be used since it necessary part of NewMovement(...).
-func WithOutcomeMacroLinkID(linkID gmns.LinkID) func(*Movement) {
+// WithOutcomeLinkID changes the outbound link reference in the owning network.
+func WithOutcomeLinkID(linkID gmns.LinkID) func(*Movement) {
 	return func(mvmt *Movement) {
-		mvmt.outcomeMacroLinkID = linkID
+		mvmt.outcomeLinkID = linkID
 	}
 }
 
@@ -448,4 +448,16 @@ func WithoutOutcomeLaneEnd() func(*Movement) {
 	return func(mvmt *Movement) {
 		mvmt.outcomeLaneEnd = nil
 	}
+}
+
+// Clone returns independent geometry and agent slices; optional scalars are never exposed by pointer.
+func (mvmt *Movement) Clone() *Movement {
+	if mvmt == nil {
+		return nil
+	}
+	result := *mvmt
+	result.geom = mvmt.geom.Clone()
+	result.geomEuclidean = mvmt.geomEuclidean.Clone()
+	result.allowedAgentTypes = append([]types.AgentType(nil), mvmt.allowedAgentTypes...)
+	return &result
 }

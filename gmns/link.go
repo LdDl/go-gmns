@@ -28,13 +28,26 @@ func ParseLinkID(value string, kind IDType) (LinkID, error) {
 	return LinkID{value: parsed, kind: kind}, nil
 }
 
-func (identifier LinkID) String() string  { return identifier.value }
-func (identifier LinkID) Type() IDType    { return identifier.kind }
-func (identifier LinkID) IsZero() bool    { return identifier == (LinkID{}) }
-func (identifier LinkID) Validate() error { return validateID(identifier.value, identifier.kind) }
+func (identifier LinkID) String() string {
+	return identifier.value
+}
+
+func (identifier LinkID) Type() IDType {
+	return identifier.kind
+}
+
+func (identifier LinkID) IsZero() bool {
+	return identifier == (LinkID{})
+}
+
+func (identifier LinkID) Validate() error {
+	return validateID(identifier.value, identifier.kind)
+}
 
 // Int64 returns a numeric value only for integer IDs within the int64 range.
-func (identifier LinkID) Int64() (int64, bool) { return integerID(identifier.value, identifier.kind) }
+func (identifier LinkID) Int64() (int64, bool) {
+	return integerID(identifier.value, identifier.kind)
+}
 
 // Less provides deterministic ordering by kind, then by integer value or exact text.
 func (identifier LinkID) Less(other LinkID) bool {

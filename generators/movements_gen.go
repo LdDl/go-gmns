@@ -11,6 +11,29 @@ import (
 
 // GenerateMovements generates movements for the given macroscopic network
 func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
+	if macroNet != nil && len(macroNet.MovementRecords()) > 0 {
+		stored := macroNet.MovementStorage()
+		err := macroNet.ValidateMovements(stored)
+		if err != nil {
+			return nil, err
+		}
+		kind, err := macroIdentifierType(macroNet)
+		if err != nil {
+			return nil, err
+		}
+		err = stored.ValidateIDType(kind)
+		if err != nil {
+			return nil, err
+		}
+		if macroNet.Config() != nil {
+			err = macroNet.ValidateDataset()
+			if err != nil {
+				return nil, err
+			}
+		}
+		return stored, nil
+	}
+
 	err := requireDirectedMacroLinks(macroNet)
 	if err != nil {
 		return nil, err
@@ -20,6 +43,11 @@ func GenerateMovements(macroNet *macro.Net) (movement.MovementsStorage, error) {
 		return nil, err
 	}
 	err = macroNet.ValidateReferences()
+	if err != nil {
+		return nil, err
+	}
+
+	err = requireSupportedMacroDataset(macroNet)
 	if err != nil {
 		return nil, err
 	}

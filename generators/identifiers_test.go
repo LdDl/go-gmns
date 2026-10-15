@@ -67,7 +67,7 @@ func TestGenerationPreservesExternalIDsAndLocalAllocation(t *testing.T) {
 			repeated, err := GenerateMovements(net)
 			assert.NoError(t, err)
 			assert.Equal(t, movements, repeated, "movement IDs must not depend on previous runs")
-			assert.NoError(t, movements.ValidateReferences(net))
+			assert.NoError(t, net.ValidateMovements(movements))
 			assert.NoError(t, movements.ValidateIDType(testCase.kind))
 			assert.Len(t, movements, 1)
 			mesoNet, err := GenerateMesoscopic(net, movements)

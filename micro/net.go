@@ -6,10 +6,21 @@ import (
 	"sort"
 
 	"github.com/LdDl/go-gmns/gmns"
+	"github.com/LdDl/go-gmns/movement"
 )
 
 // Net is representation of a microscopic road network with links and nodes
 type Net struct {
+	lanes          map[gmns.LaneID]*gmns.Lane
+	segments       map[gmns.SegmentID]*gmns.Segment
+	segmentLanes   map[gmns.SegmentLaneID]*gmns.SegmentLane
+	config         *gmns.Config
+	geometries     map[gmns.GeometryID]*gmns.Geometry
+	zones          map[gmns.NodeID]*gmns.Zone
+	useDefinitions map[string]*gmns.UseDefinition
+	useGroups      map[string]*gmns.UseGroup
+	movements      movement.MovementsStorage
+
 	Nodes map[gmns.NodeID]*Node
 	Links map[gmns.LinkID]*Link
 

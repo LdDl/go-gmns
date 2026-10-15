@@ -28,13 +28,26 @@ func ParseNodeID(value string, kind IDType) (NodeID, error) {
 	return NodeID{value: parsed, kind: kind}, nil
 }
 
-func (identifier NodeID) String() string  { return identifier.value }
-func (identifier NodeID) Type() IDType    { return identifier.kind }
-func (identifier NodeID) IsZero() bool    { return identifier == (NodeID{}) }
-func (identifier NodeID) Validate() error { return validateID(identifier.value, identifier.kind) }
+func (identifier NodeID) String() string {
+	return identifier.value
+}
+
+func (identifier NodeID) Type() IDType {
+	return identifier.kind
+}
+
+func (identifier NodeID) IsZero() bool {
+	return identifier == (NodeID{})
+}
+
+func (identifier NodeID) Validate() error {
+	return validateID(identifier.value, identifier.kind)
+}
 
 // Int64 returns a numeric value only for integer IDs within the int64 range.
-func (identifier NodeID) Int64() (int64, bool) { return integerID(identifier.value, identifier.kind) }
+func (identifier NodeID) Int64() (int64, bool) {
+	return integerID(identifier.value, identifier.kind)
+}
 
 // Less provides deterministic ordering by kind, then by integer value or exact text.
 func (identifier NodeID) Less(other NodeID) bool {

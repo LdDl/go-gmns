@@ -28,10 +28,21 @@ func ParseGeometryID(value string, kind IDType) (GeometryID, error) {
 	return GeometryID{value: parsed, kind: kind}, nil
 }
 
-func (identifier GeometryID) String() string  { return identifier.value }
-func (identifier GeometryID) Type() IDType    { return identifier.kind }
-func (identifier GeometryID) IsZero() bool    { return identifier == (GeometryID{}) }
-func (identifier GeometryID) Validate() error { return validateID(identifier.value, identifier.kind) }
+func (identifier GeometryID) String() string {
+	return identifier.value
+}
+
+func (identifier GeometryID) Type() IDType {
+	return identifier.kind
+}
+
+func (identifier GeometryID) IsZero() bool {
+	return identifier == (GeometryID{})
+}
+
+func (identifier GeometryID) Validate() error {
+	return validateID(identifier.value, identifier.kind)
+}
 
 // Int64 returns a numeric value only for integer IDs within the int64 range.
 func (identifier GeometryID) Int64() (int64, bool) {

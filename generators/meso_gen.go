@@ -78,7 +78,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	if err != nil {
 		return nil, err
 	}
-	err = movements.ValidateReferences(macroNet)
+	err = macroNet.ValidateMovements(movements)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +89,15 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	err = movements.ValidateIDType(kind)
 	if err != nil {
 		return nil, err
+	}
+	err = requireSupportedMacroDataset(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	for _, mvmt := range movements {
+		if mvmt.AllowedUses() != "" {
+			return nil, fmt.Errorf("%w: authored movement allowed_uses mapping is not implemented", ErrUnsupportedGenerationInput)
+		}
 	}
 
 	if VERBOSE {
@@ -195,7 +204,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	})
 	for _, mvmtID := range sortedMovementIDs {
 		mvmt := movements[mvmtID]
-		macroNodeID := mvmt.MacroNode()
+		macroNodeID := mvmt.Node()
 		if _, ok := macroNet.Nodes[macroNodeID]; !ok {
 			return nil, errors.Wrapf(macro.ErrNodeNotFound, "Agg movements; Node ID: %v", macroNodeID)
 		}
@@ -252,7 +261,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if ok {
 				for j := range macroNodeMvmts {
 					mvmt := macroNodeMvmts[j]
-					outcomeMacroLinkID := mvmt.OutcomeMacroLink()
+					outcomeMacroLinkID := mvmt.OutcomeLink()
 					if _, ok := outcomingMacroLinksObserved[outcomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break
@@ -307,7 +316,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if ok {
 				for j := range macroNodeMvmts {
 					mvmt := macroNodeMvmts[j]
-					incomeMacroLinkID := mvmt.IncomeMacroLink()
+					incomeMacroLinkID := mvmt.IncomeLink()
 					if _, ok := outcomingMacroLinksObserved[incomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break
@@ -388,6 +397,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	mesoNet := meso.Net{
 		Nodes: mesoNodes,
 		Links: mesoLinks,
+	}
+	err = copyMacroCatalogs(macroNet, &mesoNet)
+	if err != nil {
+		return nil, err
 	}
 	return &mesoNet, nil
 }
@@ -744,8 +757,8 @@ func connectMesoscopicLinks(
 		}
 		for j := range macroNodeMvmts {
 			mvmt := macroNodeMvmts[j]
-			incomeMacroLinkID := mvmt.IncomeMacroLink()
-			outcomeMacroLinkID := mvmt.OutcomeMacroLink()
+			incomeMacroLinkID := mvmt.IncomeLink()
+			outcomeMacroLinkID := mvmt.OutcomeLink()
 			incomingMacroLink, ok := macroLinks[incomeMacroLinkID]
 			if !ok {
 				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macro link for further connection: %v", incomeMacroLinkID)
@@ -849,6 +862,13 @@ func updateBoundaryType(mesoNodes map[gmns.NodeID]*meso.Node, macroNodes map[gmn
 		if !ok {
 			return errors.Wrapf(macro.ErrNodeNotFound, "Can't find macroscopic node with id %v for mesoscopic node %v", macroNodeID, mesoNode.ID)
 		}
+		meso.WithNodeName(macroNode.Name())(mesoNode)
+		meso.WithNodeType(macroNode.NodeType())(mesoNode)
+		meso.WithNodeControlType(macroNode.ControlType())(mesoNode)
+		altitude, present := macroNode.AltitudeMeters()
+		if present {
+			meso.WithAltitudeMeters(altitude)(mesoNode)
+		}
 		macroNodeBoundaryType := macroNode.BoundaryType()
 		if macroNodeBoundaryType != types.BOUNDARY_INCOME_OUTCOME {
 			meso.WithBoundaryType(macroNodeBoundaryType)(mesoNode)
@@ -886,6 +906,7 @@ func updateLinksProperties(
 			if !ok {
 				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macroscopic link with id %v for mesoscopic link %v", macroLinkID, mesoLink.ID)
 			}
+			copyMacroRoadAttributes(macroLink, mesoLink)
 			meso.WithLinkType(macroLink.LinkType())(mesoLink)
 			freeSpeed, hasFreeSpeed := macroLink.FreeSpeed()
 			if hasFreeSpeed {

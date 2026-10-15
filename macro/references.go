@@ -187,7 +187,9 @@ func (net *Net) sortedNodeIDs() []gmns.NodeID {
 	for id := range net.Nodes {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(first, second int) bool { return ids[first].Less(ids[second]) })
+	sort.Slice(ids, func(first, second int) bool {
+		return ids[first].Less(ids[second])
+	})
 	return ids
 }
 
@@ -196,6 +198,8 @@ func (net *Net) sortedLinkIDs() []gmns.LinkID {
 	for id := range net.Links {
 		ids = append(ids, id)
 	}
-	sort.Slice(ids, func(first, second int) bool { return ids[first].Less(ids[second]) })
+	sort.Slice(ids, func(first, second int) bool {
+		return ids[first].Less(ids[second])
+	})
 	return ids
 }

@@ -13,7 +13,7 @@ func (net *Net) ValidateSourceReferences(source *macro.Net, movements movement.M
 	if err != nil {
 		return err
 	}
-	err = movements.ValidateReferences(source)
+	err = source.ValidateMovements(movements)
 	if err != nil {
 		return err
 	}

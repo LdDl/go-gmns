@@ -11,10 +11,10 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f := geojson.NewFeature(mvmt.Geom())
 	f.ID = mvmt.ID
 	f.Properties["id"] = mvmt.ID
-	f.Properties["node_id"] = mvmt.MacroNode()
+	f.Properties["node_id"] = mvmt.Node()
 	f.Properties["osm_node_id"] = mvmt.OSMNode()
 	f.Properties["name"] = mvmt.Name()
-	f.Properties["in_link_id"] = mvmt.IncomeMacroLink()
+	f.Properties["in_link_id"] = mvmt.IncomeLink()
 	incomeLaneStart, hasIncomeLaneStart := mvmt.IncomeLaneStart()
 	f.Properties["in_lane_start"] = nil
 	if hasIncomeLaneStart {
@@ -25,7 +25,7 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	if hasIncomeLaneEnd {
 		f.Properties["in_lane_end"] = incomeLaneEnd
 	}
-	f.Properties["out_link_id"] = mvmt.OutcomeMacroLink()
+	f.Properties["out_link_id"] = mvmt.OutcomeLink()
 	outcomeLaneStart, hasOutcomeLaneStart := mvmt.OutcomeLaneStart()
 	f.Properties["out_lane_start"] = nil
 	if hasOutcomeLaneStart {

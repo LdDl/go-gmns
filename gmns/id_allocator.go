@@ -128,3 +128,39 @@ func (allocator *IDAllocator) NextGeometryID() GeometryID {
 func (allocator *IDAllocator) PeekGeometryID() GeometryID {
 	return GeometryID{value: allocator.peek(), kind: allocator.idType()}
 }
+
+func (allocator *IDAllocator) ReserveLaneID(identifier LaneID) error {
+	return allocator.reserve(identifier.value, identifier.kind)
+}
+
+func (allocator *IDAllocator) NextLaneID() LaneID {
+	return LaneID{value: allocator.take(), kind: allocator.idType()}
+}
+
+func (allocator *IDAllocator) PeekLaneID() LaneID {
+	return LaneID{value: allocator.peek(), kind: allocator.idType()}
+}
+
+func (allocator *IDAllocator) ReserveSegmentID(identifier SegmentID) error {
+	return allocator.reserve(identifier.value, identifier.kind)
+}
+
+func (allocator *IDAllocator) NextSegmentID() SegmentID {
+	return SegmentID{value: allocator.take(), kind: allocator.idType()}
+}
+
+func (allocator *IDAllocator) PeekSegmentID() SegmentID {
+	return SegmentID{value: allocator.peek(), kind: allocator.idType()}
+}
+
+func (allocator *IDAllocator) ReserveSegmentLaneID(identifier SegmentLaneID) error {
+	return allocator.reserve(identifier.value, identifier.kind)
+}
+
+func (allocator *IDAllocator) NextSegmentLaneID() SegmentLaneID {
+	return SegmentLaneID{value: allocator.take(), kind: allocator.idType()}
+}
+
+func (allocator *IDAllocator) PeekSegmentLaneID() SegmentLaneID {
+	return SegmentLaneID{value: allocator.peek(), kind: allocator.idType()}
+}
