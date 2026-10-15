@@ -153,6 +153,21 @@ Optional numeric attributes and references can be cleared with matching `Without
 
 `FacilityType` and `AllowedUses` preserve supplied text independently of OSM classifications and generator agent types. Toll amounts use the dataset's currency; currency configuration, use definitions, validation and propagation of these new attributes remain pending.
 
+Built-in `ControlType` constants are available in `gmns/types`:
+
+| Constant | Value | Meaning |
+|---|---|---|
+| `CONTROL_TYPE_NOT_SIGNAL` | `common` | Legacy non-signal classification |
+| `CONTROL_TYPE_IS_SIGNAL` | `signal` | Traffic signal |
+| `CONTROL_TYPE_NO_CONTROL` | `no_control` | Explicitly uncontrolled |
+| `CONTROL_TYPE_YIELD` | `yield` | Yield control |
+| `CONTROL_TYPE_STOP` | `stop` | Stop control |
+| `CONTROL_TYPE_STOP_2_WAY` | `stop_2_way` | Two-way stop control |
+| `CONTROL_TYPE_STOP_4_WAY` | `stop_4_way` | Four-way stop control |
+| `CONTROL_TYPE_SIGNAL_WITH_RTOR` | `signal_with_RTOR` | Traffic signal with right turn on red |
+
+For example, use `macro.WithNodeControlType(types.CONTROL_TYPE_STOP)`. An empty string means absent, distinct from explicit `no_control`; custom strings are also accepted. These categories describe control, not signal timing or executable traffic rules.
+
 ### Macroscopic network
 
 The macroscopic network represents road segments at the highest level of abstraction, where each link connects two nodes (intersections or points where road topology changes).
