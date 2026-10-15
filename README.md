@@ -3,7 +3,7 @@
 ## About
 Go implementation of basic data in GMNS (General Modeling Network Specification). Contains data structures and generators utils for multi-resolution transportation networks.
 
-The target specification for incremental alignment is [GMNS v0.97 by the Zephyr Foundation and Volpe/FHWA](https://github.com/zephyr-data-specs/GMNS/tree/v0.97/spec).
+Specification: [GMNS by the Zephyr Foundation and Volpe/FHWA](https://github.com/zephyr-data-specs/GMNS/tree/v0.97/spec).
 
 This package provides:
 - Data structures for macroscopic, mesoscopic, and microscopic networks
@@ -147,13 +147,7 @@ Most of it gracefully stolen from https://osm2gmns.readthedocs.io/en/stable/mrm.
 
 IDs support strings and integers: `"001"`, `"1"` and integer `1` are distinct. Create them with typed constructors such as `gmns.NodeIDFromString("001")` or `gmns.NodeIDFromInt64(1)`. A zero-value ID denotes absence; numeric `0` and `-1` are valid IDs.
 
-Altitude and right-of-way width are stored in meters and are not inferred by generators. GeoJSON keeps altitude as a `z_coord` property alongside two-dimensional geometry. GMNS CSV integration remains pending and must declare meters as `short_length` or convert these values to the configured unit.
-
-Node zone getters `Zone()`, `MacroZone()` and `ZoneID()` now return `(gmns.NodeID, bool)`. Omit the zone option for absence; `-1` is a supplied ID. Generators preserve presence at road endpoints and leave intermediate nodes unassigned. Zone catalogs can be checked with `ValidateExternalReferences`; zone-record storage and converter CSV migration remain pending.
-
-Optional numeric attributes and references can be cleared with matching `Without…()` options, for example `macro.WithoutCapacity()(link)`. Empty strings clear optional text and categories. `ControlType`, `MovementType` and `MovementCompositeType` now have string underlying types; numeric casts/persistence must migrate. Existing constants retain their text, including explicit `common` and `undefined`; unset controls and connector codes are empty. Custom controls retain junctions without interpreting their rules.
-
-`FacilityType` and `AllowedUses` preserve supplied text independently of OSM classifications and generator agent types. Toll amounts use the dataset's currency; currency configuration, use definitions, validation and propagation of these new attributes remain pending.
+Working datasets use WGS84 coordinates, meters, km/h and seconds.
 
 Built-in `ControlType` constants are available in `gmns/types`:
 
@@ -230,16 +224,6 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `name` | string | Road name from OSM |
 | `geom` | WKT | LineString geometry in WKT format |
 
-All three link models can store an optional shared geometry ID and direction flag independently of the travel-oriented line. Shared geometry table export for meso/micro remains pending.
-
-Link `Capacity()` and `FreeSpeed()` now return `(float64, bool)`, and `WithCapacity` accepts `float64`. Omit the option for missing data; passing `-1` stores that number. Generators preserve absence, explicit zero and fractional capacity without scaling by lane count. Converter CSV migration remains pending.
-
-`LengthMeters()` now returns `(float64, bool)` and `NewLanesInfo` returns `(LanesInfo, error)`. Zero remains a supplied length; lane preparation and meso generation require positive finite macro lengths, while micro cell generation requires positive finite lengths on its meso road segments. Export does not calculate missing lengths.
-
-Macro/meso `LanesNum()` now returns `(int, bool)`; `WithLanesNum(int)` is unchanged. Omit the option for absence; zero is a supplied count. `NewLanesInfo` requires a nonnegative count. Movement and meso generation currently require positive counts and prepared lane data; micro requires supplied nonnegative counts where consumed and supports prepared zero-lane bike/walk roads with `SeparateBikeWalk`. Micro also stores an optional count independently of its lane index; the current generator leaves this new attribute absent.
-
-Bicycle/pedestrian facilities and parking describe infrastructure independently of allowed agents. Suggested category constants are available in `gmns/types`; custom strings are supported. Empty values, `none` and `unknown` remain distinct. See the note in the micro link section for more details about thouse specific fields.
-
 ### Movements
 
 Movements represent allowed turn maneuvers at intersections, connecting incoming links to outgoing links.
@@ -274,7 +258,7 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 
 #### Movement composite types
 
-Movement codes can also store supplied numbered or diagonal codes such as `NER2`. The table lists legacy generator constants; storing a code does not validate its standard syntax:
+Built-in movement codes:
 
 | Code | From | Turn | Description |
 |------|------|------|-------------|
@@ -405,7 +389,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `macro_node_id` | optional integer/string | Associated macro node (`null` for road cells) |
 | `cell_type` | string | Cell type: `forward`, `lane_change_left`, `lane_change_right` |
 | `lane_id` | int | Lane index (for forward cells) |
-| `lanes` | optional int | Supplied motor-vehicle lane count, independent of `lane_id`; left absent by the current generator |
+| `lanes` | optional int | Motor-vehicle lane count, independent of `lane_id` |
 | `is_first_movement_cell` | bool | Whether this is first cell of a movement |
 | `movement_composite_type` | string | Movement type for connection cells |
 | `additional_travel_cost` | float64 | Extra cost for lane changes |
@@ -419,8 +403,6 @@ The microscopic network provides cell-based representation for detailed simulati
 | `geom` | WKT | LineString geometry |
 
 ### Entity relationships
-
-`ValidateReferences()` checks record IDs, map keys, link endpoints and same-network parents; `ValidateParentReferences()` remains available for the narrower check. `ValidateIDType(kind)` enforces the dataset's configured kind, and `ValidateExternalReferences(zoneIDs, geometryIDs)` resolves those resources against supplied catalogs. `MovementsStorage.ValidateReferences(macroNet)` checks movements against their owning macro network. Meso/micro `ValidateSourceReferences` checks provenance separately from standard parents. Generation performs the relevant input-reference checks. These checks do not modify records or validate all geometry, lane data or calculated adjacency indexes.
 
 ```mermaid
 erDiagram
@@ -513,8 +495,6 @@ The meso network expands macro network to lane-level:
 2. Meso nodes are created at intersections and mid-link lane transitions
 3. **Connection links** are added at intersections based on movements
 4. Offset geometry is computed for each direction
-
-Nodes with explicit stop, yield or signal control retain movement connectors during meso/micro generation. Control categories are preserved without calculating delays or implementing right-turn-on-red rules. Supplied `merge`/`diverge` movement types are supported; automatic type classification still uses geometry angles.
 
 ### Step 4: Micro network
 
