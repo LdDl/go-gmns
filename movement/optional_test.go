@@ -3,6 +3,7 @@ package movement
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -79,8 +80,8 @@ func TestClearOptionalMovementFields(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			first := NewMovement(1, 2, 3, 4, "NER2", "custom maneuver", testCase.set)
-			second := NewMovement(5, 2, 3, 4, "", "", testCase.set)
+			first := NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), "NER2", "custom maneuver", testCase.set)
+			second := NewMovement(gmns.MovementIDFromInt64(5), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), "", "", testCase.set)
 			for _, field := range cases {
 				field.set(first)
 			}
@@ -107,7 +108,7 @@ func TestClearOptionalMovementFields(t *testing.T) {
 }
 
 func TestClearingLaneEndPreservesSignedStartAndSequence(t *testing.T) {
-	mvmt := NewMovement(1, 2, 3, 4, "", "",
+	mvmt := NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), "", "",
 		WithIncomeLane(-2, -1),
 		WithIncomeLaneSequence(0, 1),
 		WithOutcomeLane(-3, -2),

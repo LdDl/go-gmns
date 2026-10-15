@@ -3,6 +3,7 @@ package macro
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +59,7 @@ func TestLinkLengthGeoJSON(t *testing.T) {
 				{30, 60},
 				{30.002, 60},
 			}
-			link := NewLinkFrom(1, 2, 3, testCase.options...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3), testCase.options...)
 			WithLineGeom(shape.Clone())(link)
 			data, err := link.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)

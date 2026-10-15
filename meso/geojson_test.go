@@ -3,15 +3,16 @@ package meso
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGeoFeaturePreservesLinkProperties(t *testing.T) {
-	link := NewLinkFrom(1, 2, 3,
-		WithLineMacroNodeID(17),
-		WithLineMacroLinkID(29),
+	link := NewLinkFrom(gmns.LinkIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3),
+		WithLineMacroNodeID(gmns.NodeIDFromInt64(17)),
+		WithLineMacroLinkID(gmns.LinkIDFromInt64(29)),
 		WithLinkType(types.LINK_SECONDARY),
 		WithControlType(types.CONTROL_TYPE_IS_SIGNAL),
 	)

@@ -4,6 +4,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,7 +65,7 @@ func TestNewLanesInfoRequiresUsableLength(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			link := NewLinkFrom(10, 1, 2, WithLanesNum(2))
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), WithLanesNum(2))
 			if testCase.present {
 				WithLengthMeters(testCase.value)(link)
 			}
@@ -131,7 +132,7 @@ func TestNewLanesInfoRequiresLaneCount(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			link := NewLinkFrom(10, 1, 2, WithLengthMeters(50))
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), WithLengthMeters(50))
 			if testCase.present {
 				WithLanesNum(testCase.value)(link)
 			}

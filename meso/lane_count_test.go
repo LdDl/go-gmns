@@ -3,6 +3,7 @@ package meso
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
 )
@@ -53,7 +54,7 @@ func TestLinkLaneCountGeoJSON(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			link := NewLinkFrom(10, 1, 2, testCase.options...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), testCase.options...)
 			data, err := link.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)
 			if err != nil {

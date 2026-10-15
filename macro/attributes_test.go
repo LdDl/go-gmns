@@ -3,6 +3,7 @@ package macro
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestSuppliedAttributesGeoJSON(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			link := NewLinkFrom(10, 1, 2,
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2),
 				WithFacilityType(testCase.facility),
 				WithAllowedUses(testCase.uses),
 				WithLinkControlType(testCase.control),
@@ -95,7 +96,7 @@ func TestSuppliedAttributesGeoJSON(t *testing.T) {
 }
 
 func TestNodeControlPresence(t *testing.T) {
-	node := NewNodeFrom(1)
+	node := NewNodeFrom(gmns.NodeIDFromInt64(1))
 	assert.Empty(t, node.ControlType())
 	assert.Equal(t, "", node.GeoFeature().Properties["control_type"])
 	WithNodeControlType("custom control")(node)
@@ -119,7 +120,7 @@ func TestNodeControlPresence(t *testing.T) {
 }
 
 func TestLinkControlDefaultsToAbsent(t *testing.T) {
-	link := NewLinkFrom(1, 2, 3)
+	link := NewLinkFrom(gmns.LinkIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3))
 	assert.Empty(t, link.ControlType())
 	assert.Equal(t, "", link.GeoFeature().Properties["control_type"])
 }

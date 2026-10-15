@@ -3,6 +3,7 @@ package meso
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -78,7 +79,7 @@ func TestFacilityAttributesGeoJSON(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			allowed := []types.AgentType{types.AGENT_AUTO}
-			link := NewLinkFrom(10, 1, 2, WithAllowedAgentTypes(allowed))
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), WithAllowedAgentTypes(allowed))
 			for _, option := range testCase.options {
 				option(link)
 			}
@@ -106,7 +107,7 @@ func TestFacilityAttributesGeoJSON(t *testing.T) {
 
 func TestAllowedAgentsDoNotInventFacilities(t *testing.T) {
 	allowed := []types.AgentType{types.AGENT_BIKE, types.AGENT_WALK}
-	link := NewLinkFrom(10, 1, 2, WithAllowedAgentTypes(allowed))
+	link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), WithAllowedAgentTypes(allowed))
 	feature := link.GeoFeature()
 	assert.Equal(t, "", feature.Properties["bike_facility"])
 	assert.Equal(t, "", feature.Properties["ped_facility"])

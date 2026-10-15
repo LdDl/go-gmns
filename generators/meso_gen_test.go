@@ -3,6 +3,7 @@ package generators
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/macro"
 	"github.com/LdDl/go-gmns/movement"
 	"github.com/LdDl/go-gmns/utils/geomath"
@@ -51,9 +52,9 @@ func TestGenerateMesoscopicPreservesSource(t *testing.T) {
 				LanesChangePoints: []float64{0, length * 0.4, length},
 			}
 			network := macro.NewNet()
-			network.Nodes[1] = macro.NewNodeFrom(1, macro.WithPointGeom(shape[0]), macro.WithOutcomingLinks(10))
-			network.Nodes[2] = macro.NewNodeFrom(2, macro.WithPointGeom(shape[2]), macro.WithIncomingLinks(10))
-			network.Links[10] = macro.NewLinkFrom(10, 1, 2,
+			network.Nodes[gmns.NodeIDFromInt64(1)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(1), macro.WithPointGeom(shape[0]), macro.WithOutcomingLinks(gmns.LinkIDFromInt64(10)))
+			network.Nodes[gmns.NodeIDFromInt64(2)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(2), macro.WithPointGeom(shape[2]), macro.WithIncomingLinks(gmns.LinkIDFromInt64(10)))
+			network.Links[gmns.LinkIDFromInt64(10)] = macro.NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2),
 				macro.WithLineGeom(shape.Clone()),
 				macro.WithLineGeomEuclidean(geomath.LineToEuclidean(shape)),
 				macro.WithLengthMeters(length),
@@ -63,26 +64,26 @@ func TestGenerateMesoscopicPreservesSource(t *testing.T) {
 			if testCase.bidirectional {
 				reverse := shape.Clone()
 				reverse.Reverse()
-				network.Links[11] = macro.NewLinkFrom(11, 2, 1,
+				network.Links[gmns.LinkIDFromInt64(11)] = macro.NewLinkFrom(gmns.LinkIDFromInt64(11), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(1),
 					macro.WithLineGeom(reverse),
 					macro.WithLineGeomEuclidean(geomath.LineToEuclidean(reverse)),
 					macro.WithLengthMeters(length),
 					macro.WithLanesNum(2),
 					macro.WithLanesInfo(laneInfo),
 				)
-				macro.WithIncomingLinks(11)(network.Nodes[1])
-				macro.WithOutcomingLinks(11)(network.Nodes[2])
+				macro.WithIncomingLinks(gmns.LinkIDFromInt64(11))(network.Nodes[gmns.NodeIDFromInt64(1)])
+				macro.WithOutcomingLinks(gmns.LinkIDFromInt64(11))(network.Nodes[gmns.NodeIDFromInt64(2)])
 			}
 			movements := movement.NewMovementsStorage()
 			if testCase.invalidNode {
-				movements[1] = movement.NewMovement(1, 999, 10, 11, movement.MOVEMENT_SBT, movement.MOVEMENT_TYPE_THRU)
+				movements[gmns.MovementIDFromInt64(1)] = movement.NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(999), gmns.LinkIDFromInt64(10), gmns.LinkIDFromInt64(11), movement.MOVEMENT_SBT, movement.MOVEMENT_TYPE_THRU)
 			}
 			first, err := GenerateMesoscopic(network, movements)
 			for _, link := range network.Links {
-				assert.Equal(t, expectedLaneInfo, link.LanesInfo(), "source link %d", link.ID)
+				assert.Equal(t, expectedLaneInfo, link.LanesInfo(), "source link %v", link.ID)
 			}
-			assert.Equal(t, shape, network.Links[10].Geom())
-			assert.Equal(t, geomath.LineToEuclidean(shape), network.Links[10].GeomEuclidean())
+			assert.Equal(t, shape, network.Links[gmns.LinkIDFromInt64(10)].Geom())
+			assert.Equal(t, geomath.LineToEuclidean(shape), network.Links[gmns.LinkIDFromInt64(10)].GeomEuclidean())
 			if testCase.invalidNode {
 				assert.ErrorIs(t, err, macro.ErrNodeNotFound)
 				assert.Nil(t, first)
@@ -100,7 +101,7 @@ func TestGenerateMesoscopicPreservesSource(t *testing.T) {
 			}
 			assert.Equal(t, first, second, "repeated generation must produce the same graph")
 			for _, link := range network.Links {
-				assert.Equal(t, expectedLaneInfo, link.LanesInfo(), "source link %d after repeated generation", link.ID)
+				assert.Equal(t, expectedLaneInfo, link.LanesInfo(), "source link %v after repeated generation", link.ID)
 			}
 		})
 	}

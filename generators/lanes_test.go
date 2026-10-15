@@ -3,6 +3,7 @@ package generators
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/LdDl/go-gmns/macro"
 	"github.com/LdDl/go-gmns/meso"
@@ -33,8 +34,8 @@ func TestGeneratorsRejectMissingOrNegativeLaneCounts(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			macroNet, mesoNet := laneCountTestNetworks()
-			macroLink := macroNet.Links[10]
-			mesoLink := mesoNet.Links[100]
+			macroLink := macroNet.Links[gmns.LinkIDFromInt64(10)]
+			mesoLink := mesoNet.Links[gmns.LinkIDFromInt64(100)]
 			if testCase.present {
 				macro.WithLanesNum(testCase.value)(macroLink)
 				meso.WithLanesNum(testCase.value)(mesoLink)
@@ -72,7 +73,7 @@ func TestGeneratorsRejectMissingOrNegativeLaneCounts(t *testing.T) {
 			assert.Equal(t, testCase.value, value)
 			assert.Equal(t, testCase.present, present)
 			assert.Len(t, macroNet.Nodes, 2)
-			assert.Empty(t, mesoNet.Nodes)
+			assert.Len(t, mesoNet.Nodes, 2)
 		})
 	}
 }
@@ -133,7 +134,7 @@ func TestMovementAndMesoRequirePositivePreparedLanes(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			network := controlTestNetwork(t, types.CONTROL_TYPE_IS_SIGNAL)
-			link := network.Links[10]
+			link := network.Links[gmns.LinkIDFromInt64(10)]
 			for _, option := range testCase.options {
 				option(link)
 			}
@@ -159,8 +160,8 @@ func TestMovementAndMesoRequirePositivePreparedLanes(t *testing.T) {
 
 func TestMicroAllowsZeroMotorLanesWithSeparateBikeWalk(t *testing.T) {
 	macroNet, mesoNet := laneCountTestNetworks()
-	macro.WithLanesNum(0)(macroNet.Links[10])
-	meso.WithLanesNum(0)(mesoNet.Links[100])
+	macro.WithLanesNum(0)(macroNet.Links[gmns.LinkIDFromInt64(10)])
+	meso.WithLanesNum(0)(mesoNet.Links[gmns.LinkIDFromInt64(100)])
 	options := DefaultMicroGenOptions()
 	options.SeparateBikeWalk = true
 	microNet, err := GenerateMicroscopic(macroNet, mesoNet, movement.NewMovementsStorage(), options)
@@ -187,8 +188,8 @@ func TestMicroAllowsZeroMotorLanesWithSeparateBikeWalk(t *testing.T) {
 	for _, link := range microNet.Links {
 		assert.Contains(t, []int{-1, -2}, link.LaneID())
 	}
-	macroLanes, macroPresent := macroNet.Links[10].LanesNum()
-	mesoLanes, mesoPresent := mesoNet.Links[100].LanesNum()
+	macroLanes, macroPresent := macroNet.Links[gmns.LinkIDFromInt64(10)].LanesNum()
+	mesoLanes, mesoPresent := mesoNet.Links[gmns.LinkIDFromInt64(100)].LanesNum()
 	assert.Zero(t, macroLanes)
 	assert.True(t, macroPresent)
 	assert.Zero(t, mesoLanes)
@@ -209,13 +210,13 @@ func TestMicroRejectsMissingConnectorLaneCount(t *testing.T) {
 	}
 	connectorCount := 0
 	for linkID, original := range mesoNet.Links {
-		if original.MacroNode() != 2 {
+		if original.MacroNode() != gmns.NodeIDFromInt64(2) {
 			continue
 		}
 		connectorCount++
 		connector := meso.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 			meso.WithLineMacroNodeID(original.MacroNode()),
-			meso.WithLineMacroLinkID(-1),
+			meso.WithLineMacroLinkID(gmns.LinkID{}),
 			meso.WithMovementID(original.Movement()),
 			meso.WithMovementMesoLinkIncome(original.MovementMesoLinkIncome()),
 			meso.WithMovementMesoLinkOutcome(original.MovementMesoLinkOutcome()),
@@ -233,7 +234,7 @@ func TestMicroRejectsMissingConnectorLaneCount(t *testing.T) {
 		assert.Contains(t, err.Error(), "lane count is required")
 	}
 	for _, link := range mesoNet.Links {
-		if link.MacroNode() == 2 {
+		if link.MacroNode() == gmns.NodeIDFromInt64(2) {
 			_, present := link.LanesNum()
 			assert.False(t, present)
 		}
@@ -247,9 +248,9 @@ func laneCountTestNetworks() (*macro.Net, *meso.Net) {
 	}
 	length := geo.LengthHaversine(shape)
 	macroNet := macro.NewNet()
-	macroNet.Nodes[1] = macro.NewNodeFrom(1, macro.WithOutcomingLinks(10))
-	macroNet.Nodes[2] = macro.NewNodeFrom(2, macro.WithIncomingLinks(10))
-	macroNet.Links[10] = macro.NewLinkFrom(10, 1, 2,
+	macroNet.Nodes[gmns.NodeIDFromInt64(1)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(1), macro.WithOutcomingLinks(gmns.LinkIDFromInt64(10)))
+	macroNet.Nodes[gmns.NodeIDFromInt64(2)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(2), macro.WithIncomingLinks(gmns.LinkIDFromInt64(10)))
+	macroNet.Links[gmns.LinkIDFromInt64(10)] = macro.NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2),
 		macro.WithLengthMeters(length),
 		macro.WithLineGeom(shape.Clone()),
 		macro.WithLineGeomEuclidean(geomath.LineToEuclidean(shape)),
@@ -266,10 +267,12 @@ func laneCountTestNetworks() (*macro.Net, *meso.Net) {
 		}),
 	)
 	mesoNet := meso.NewNet()
-	mesoNet.Links[100] = meso.NewLinkFrom(100, 1, 2,
-		meso.WithLineMacroLinkID(10),
-		meso.WithLineMacroNodeID(-1),
-		meso.WithMovementID(-1),
+	mesoNet.Nodes[gmns.NodeIDFromInt64(1)] = meso.NewNodeFrom(gmns.NodeIDFromInt64(1))
+	mesoNet.Nodes[gmns.NodeIDFromInt64(2)] = meso.NewNodeFrom(gmns.NodeIDFromInt64(2))
+	mesoNet.Links[gmns.LinkIDFromInt64(100)] = meso.NewLinkFrom(gmns.LinkIDFromInt64(100), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2),
+		meso.WithLineMacroLinkID(gmns.LinkIDFromInt64(10)),
+		meso.WithLineMacroNodeID(gmns.NodeID{}),
+		meso.WithMovementID(gmns.MovementID{}),
 		meso.WithLengthMeters(length),
 		meso.WithLineGeom(shape.Clone()),
 		meso.WithLineGeomEuclidean(geomath.LineToEuclidean(shape)),

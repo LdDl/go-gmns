@@ -44,7 +44,7 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:              id,
 		geom:            orb.Point{},
 		geomEuclidean:   orb.Point{},
-		mesoLinkID:      -1,
+		mesoLinkID:      gmns.LinkID{},
 		laneID:          0,
 		cellIndex:       -1,
 		isUpstreamEnd:   false,
@@ -86,7 +86,7 @@ func (node *Node) GeomEuclidean() orb.Point {
 	return node.geomEuclidean
 }
 
-// MesoLink returns identifier of parent mesoscopic link. Outputs "-1" if not set.
+// MesoLink returns identifier of parent mesoscopic link. Returns a zero ID when absent.
 func (node *Node) MesoLink() gmns.LinkID {
 	return node.mesoLinkID
 }
@@ -114,7 +114,7 @@ func (node *Node) IsDownstreamEnd() bool {
 // ZoneID returns the supplied zone identifier and whether it is set.
 func (node *Node) ZoneID() (gmns.NodeID, bool) {
 	if node.zoneID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.zoneID, true
 }
@@ -270,7 +270,7 @@ func WithNodeName(name string) func(*Node) {
 // This reference is independent of source provenance across network levels.
 func (node *Node) ParentNode() (gmns.NodeID, bool) {
 	if node.parentNodeID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.parentNodeID, true
 }

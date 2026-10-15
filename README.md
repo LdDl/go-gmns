@@ -145,9 +145,11 @@ The movement, meso and micro generators require directed input links and return 
 
 Most of it gracefully stolen from https://osm2gmns.readthedocs.io/en/stable/mrm.html
 
+IDs support strings and integers: `"001"`, `"1"` and integer `1` are distinct. Create them with typed constructors such as `gmns.NodeIDFromString("001")` or `gmns.NodeIDFromInt64(1)`. A zero-value ID denotes absence; numeric `0` and `-1` are valid IDs.
+
 Altitude and right-of-way width are stored in meters and are not inferred by generators. GeoJSON keeps altitude as a `z_coord` property alongside two-dimensional geometry. GMNS CSV integration remains pending and must declare meters as `short_length` or convert these values to the configured unit.
 
-Node zone getters `Zone()`, `MacroZone()` and `ZoneID()` now return `(gmns.NodeID, bool)`. Omit the zone option for absence; `-1` is a supplied ID. Generators preserve presence at road endpoints and leave intermediate nodes unassigned. Zone-table validation and converter CSV migration remain pending.
+Node zone getters `Zone()`, `MacroZone()` and `ZoneID()` now return `(gmns.NodeID, bool)`. Omit the zone option for absence; `-1` is a supplied ID. Generators preserve presence at road endpoints and leave intermediate nodes unassigned. Zone catalogs can be checked with `ValidateExternalReferences`; zone-record storage and converter CSV migration remain pending.
 
 Optional numeric attributes and references can be cleared with matching `Without…()` options, for example `macro.WithoutCapacity()(link)`. Empty strings clear optional text and categories. `ControlType`, `MovementType` and `MovementCompositeType` now have string underlying types; numeric casts/persistence must migrate. Existing constants retain their text, including explicit `common` and `undefined`; unset controls and connector codes are empty. Custom controls retain junctions without interpreting their rules.
 
@@ -176,8 +178,8 @@ The macroscopic network represents road segments at the highest level of abstrac
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique node identifier |
-| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
+| `id` | integer/string | Unique node identifier |
+| `parent_node_id` | optional integer/string | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
@@ -185,7 +187,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `activity_type` | string | Activity type: `none`, `poi`, `link` |
 | `activity_link_type` | string | If activity_type=link, the predominant link type at this node |
-| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
+| `zone_id` | optional integer/string | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `intersection_id` | int64 | Intersection cluster ID (-1 if not applicable) |
 | `poi_id` | int64 | Point of interest ID (-1 if not applicable) |
 | `osm_highway` | string | OSM highway tag value (e.g., `traffic_signals`, `crossing`) |
@@ -197,10 +199,10 @@ The macroscopic network represents road segments at the highest level of abstrac
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique link identifier |
-| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
-| `source_node` | int64 | Source node ID |
-| `target_node` | int64 | Target node ID |
+| `id` | integer/string | Unique link identifier |
+| `parent_link_id` | optional integer/string | Associated link in the same network (`null` in GeoJSON if not set) |
+| `source_node` | integer/string | Source node ID |
+| `target_node` | integer/string | Target node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
@@ -246,14 +248,14 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique movement identifier |
-| `node_id` | int64 | Macro node ID where movement occurs |
+| `id` | integer/string | Unique movement identifier |
+| `node_id` | integer/string | Macro node ID where movement occurs |
 | `osm_node_id` | int64 | OSM node ID of the intersection |
 | `name` | string | Movement name (typically empty) |
-| `in_link_id` | int64 | Incoming macro link ID |
+| `in_link_id` | integer/string | Incoming macro link ID |
 | `in_lane_start` | optional int | Starting lane number on incoming link (`null` if not set) |
 | `in_lane_end` | optional int | Ending lane number on incoming link (`null` denotes a single lane when the start is set) |
-| `out_link_id` | int64 | Outgoing macro link ID |
+| `out_link_id` | integer/string | Outgoing macro link ID |
 | `out_lane_start` | optional int | Starting lane number on outgoing link (`null` if not set) |
 | `out_lane_end` | optional int | Ending lane number on outgoing link (`null` denotes a single lane when the start is set) |
 | `lanes_num` | int | Number of lanes for this movement |
@@ -301,15 +303,15 @@ The mesoscopic network provides lane-level representation with offset geometries
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique meso node identifier |
-| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
+| `id` | integer/string | Unique meso node identifier |
+| `parent_node_id` | optional integer/string | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
-| `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
-| `macro_link_id` | int64 | Associated macro link ID for mid-link nodes (-1 if at intersection) |
-| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
+| `macro_node_id` | optional integer/string | Associated macro node ID (`null` if absent) |
+| `macro_link_id` | optional integer/string | Associated macro link ID for mid-link nodes (`null` at intersections) |
+| `zone_id` | optional integer/string | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `activity_link_type` | string | Link type for activity nodes |
 | `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `longitude` | float64 | WGS84 longitude |
@@ -319,11 +321,11 @@ The mesoscopic network provides lane-level representation with offset geometries
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique meso link identifier |
-| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
+| `id` | integer/string | Unique meso link identifier |
+| `parent_link_id` | optional integer/string | Associated link in the same network (`null` in GeoJSON if not set) |
 | `name` | string | Supplied link name; empty if not supplied |
-| `source_node` | int64 | Source meso node ID |
-| `target_node` | int64 | Target meso node ID |
+| `source_node` | integer/string | Source meso node ID |
+| `target_node` | integer/string | Target meso node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
@@ -333,11 +335,11 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `parking` | string | Curbside parking type; empty if not supplied |
 | `facility_type` | string | Supplied facility classification; empty if not supplied |
 | `toll` | optional float64 | Supplied amount in dataset currency units (`null` in GeoJSON if not set) |
-| `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
-| `macro_link_id` | int64 | Associated macro link ID |
+| `macro_node_id` | optional integer/string | Associated macro node (`null` for road segments) |
+| `macro_link_id` | optional integer/string | Associated macro link ID |
 | `segment_idx` | int | Segment index within macro link |
 | `is_connection` | bool | Whether this is a connector link at intersection |
-| `movement_id` | int64 | Movement ID for connector links (-1 otherwise) |
+| `movement_id` | optional integer/string | Movement ID for connector links (`null` otherwise) |
 | `movement_composite_type` | string | Movement type code for connectors |
 | `in_lane_start` | int | Incoming lane start index |
 | `in_lane_end` | int | Incoming lane end index |
@@ -362,18 +364,18 @@ The microscopic network provides cell-based representation for detailed simulati
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique micro node identifier |
-| `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
+| `id` | integer/string | Unique micro node identifier |
+| `parent_node_id` | optional integer/string | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
 | `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
-| `meso_link_id` | int64 | Associated meso link ID |
+| `meso_link_id` | optional integer/string | Associated meso link ID |
 | `lane_id` | int | Lane index within the meso link |
 | `cell_index` | int | Cell position along the lane (0 = upstream) |
 | `is_upstream_end` | bool | Whether node is at upstream end of meso link |
 | `is_downstream_end` | bool | Whether node is at downstream end of meso link |
-| `zone_id` | optional int64 | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
+| `zone_id` | optional integer/string | Supplied zone identifier (`null` in GeoJSON if not set); zero and negative IDs are preserved |
 | `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `longitude` | float64 | WGS84 longitude |
 | `latitude` | float64 | WGS84 latitude |
@@ -384,11 +386,11 @@ The microscopic network provides cell-based representation for detailed simulati
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | int64 | Unique micro link identifier |
-| `parent_link_id` | optional int64 | Associated link in the same network (`null` in GeoJSON if not set) |
+| `id` | integer/string | Unique micro link identifier |
+| `parent_link_id` | optional integer/string | Associated link in the same network (`null` in GeoJSON if not set) |
 | `name` | string | Supplied link name; empty if not supplied |
-| `source_node` | int64 | Source micro node ID |
-| `target_node` | int64 | Target micro node ID |
+| `source_node` | integer/string | Source micro node ID |
+| `target_node` | integer/string | Target micro node ID |
 | `directed` | bool | Whether travel is restricted to source-to-target direction; constructors default to `true` |
 | `grade` | optional float64 | Grade in percent; negative is downhill (`null` in GeoJSON if not set) |
 | `row_width` | optional float64 | Entire right-of-way width across both directions, in meters (`null` in GeoJSON if not set) |
@@ -398,9 +400,9 @@ The microscopic network provides cell-based representation for detailed simulati
 | `parking` | string | Curbside parking type; empty if not supplied |
 | `facility_type` | string | Supplied facility classification; empty if not supplied |
 | `toll` | optional float64 | Supplied amount in dataset currency units (`null` in GeoJSON if not set) |
-| `meso_link_id` | int64 | Associated meso link ID |
-| `macro_link_id` | int64 | Associated macro link ID |
-| `macro_node_id` | int64 | Associated macro node (-1 for road cells) |
+| `meso_link_id` | optional integer/string | Associated meso link ID |
+| `macro_link_id` | optional integer/string | Associated macro link ID |
+| `macro_node_id` | optional integer/string | Associated macro node (`null` for road cells) |
 | `cell_type` | string | Cell type: `forward`, `lane_change_left`, `lane_change_right` |
 | `lane_id` | int | Lane index (for forward cells) |
 | `lanes` | optional int | Supplied motor-vehicle lane count, independent of `lane_id`; left absent by the current generator |
@@ -418,7 +420,7 @@ The microscopic network provides cell-based representation for detailed simulati
 
 ### Entity relationships
 
-Each network provides `ValidateParentReferences()` to check that supplied parent node/link IDs resolve within that network. It returns an error identifying the invalid reference and does not modify the graph. This check is called explicitly and does not validate the full topology.
+`ValidateReferences()` checks record IDs, map keys, link endpoints and same-network parents; `ValidateParentReferences()` remains available for the narrower check. `ValidateIDType(kind)` enforces the dataset's configured kind, and `ValidateExternalReferences(zoneIDs, geometryIDs)` resolves those resources against supplied catalogs. `MovementsStorage.ValidateReferences(macroNet)` checks movements against their owning macro network. Meso/micro `ValidateSourceReferences` checks provenance separately from standard parents. Generation performs the relevant input-reference checks. These checks do not modify records or validate all geometry, lane data or calculated adjacency indexes.
 
 ```mermaid
 erDiagram

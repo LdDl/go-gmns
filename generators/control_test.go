@@ -3,6 +3,7 @@ package generators
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/LdDl/go-gmns/macro"
 	"github.com/LdDl/go-gmns/utils/geomath"
@@ -66,7 +67,7 @@ func TestControlSurvivesGeneration(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			network := controlTestNetwork(t, testCase.controlType)
-			assert.Equal(t, testCase.name, network.Nodes[2].GeoFeature().Properties["control_type"])
+			assert.Equal(t, testCase.name, network.Nodes[gmns.NodeIDFromInt64(2)].GeoFeature().Properties["control_type"])
 			movements, err := GenerateMovements(network)
 			assert.NoError(t, err)
 			if err != nil {
@@ -79,9 +80,9 @@ func TestControlSurvivesGeneration(t *testing.T) {
 			}
 
 			flags := ComputeMovementFlags(network, movements)
-			assert.Equal(t, testCase.needsMovement, flags.NodesNeedMovement[2])
-			assert.Equal(t, !testCase.needsMovement, flags.DownstreamIsTarget[10])
-			assert.False(t, flags.UpstreamIsTarget[11])
+			assert.Equal(t, testCase.needsMovement, flags.NodesNeedMovement[gmns.NodeIDFromInt64(2)])
+			assert.Equal(t, !testCase.needsMovement, flags.DownstreamIsTarget[gmns.LinkIDFromInt64(10)])
+			assert.False(t, flags.UpstreamIsTarget[gmns.LinkIDFromInt64(11)])
 
 			mesoNet, err := GenerateMesoscopic(network, movements)
 			assert.NoError(t, err)
@@ -90,7 +91,7 @@ func TestControlSurvivesGeneration(t *testing.T) {
 			}
 			connectorCount := 0
 			for _, link := range mesoNet.Links {
-				if link.MacroNode() != 2 {
+				if link.MacroNode() != gmns.NodeIDFromInt64(2) {
 					continue
 				}
 				connectorCount++
@@ -110,7 +111,7 @@ func TestControlSurvivesGeneration(t *testing.T) {
 			}
 			movementCells := 0
 			for _, link := range microNet.Links {
-				if link.MacroNode() != 2 {
+				if link.MacroNode() != gmns.NodeIDFromInt64(2) {
 					continue
 				}
 				movementCells++
@@ -122,7 +123,7 @@ func TestControlSurvivesGeneration(t *testing.T) {
 			} else {
 				assert.Zero(t, movementCells)
 			}
-			assert.Equal(t, testCase.controlType, network.Nodes[2].ControlType())
+			assert.Equal(t, testCase.controlType, network.Nodes[gmns.NodeIDFromInt64(2)].ControlType())
 		})
 	}
 }
@@ -135,23 +136,23 @@ func controlTestNetwork(t *testing.T, controlType types.ControlType) *macro.Net 
 		{30.004, 60},
 	}
 	network := macro.NewNet()
-	network.Nodes[1] = macro.NewNodeFrom(1,
+	network.Nodes[gmns.NodeIDFromInt64(1)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(1),
 		macro.WithPointGeom(points[0]),
-		macro.WithOutcomingLinks(10),
+		macro.WithOutcomingLinks(gmns.LinkIDFromInt64(10)),
 	)
-	network.Nodes[2] = macro.NewNodeFrom(2,
+	network.Nodes[gmns.NodeIDFromInt64(2)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(2),
 		macro.WithPointGeom(points[1]),
-		macro.WithIncomingLinks(10),
-		macro.WithOutcomingLinks(11),
+		macro.WithIncomingLinks(gmns.LinkIDFromInt64(10)),
+		macro.WithOutcomingLinks(gmns.LinkIDFromInt64(11)),
 		macro.WithNodeControlType(controlType),
 	)
-	network.Nodes[3] = macro.NewNodeFrom(3,
+	network.Nodes[gmns.NodeIDFromInt64(3)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(3),
 		macro.WithPointGeom(points[2]),
-		macro.WithIncomingLinks(11),
+		macro.WithIncomingLinks(gmns.LinkIDFromInt64(11)),
 	)
 	links := []*macro.Link{
-		macro.NewLinkFrom(10, 1, 2, macro.WithLineGeom(orb.LineString{points[0], points[1]})),
-		macro.NewLinkFrom(11, 2, 3, macro.WithLineGeom(orb.LineString{points[1], points[2]})),
+		macro.NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), macro.WithLineGeom(orb.LineString{points[0], points[1]})),
+		macro.NewLinkFrom(gmns.LinkIDFromInt64(11), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3), macro.WithLineGeom(orb.LineString{points[1], points[2]})),
 	}
 	for _, link := range links {
 		macro.WithLineGeomEuclidean(geomath.LineToEuclidean(link.Geom()))(link)
@@ -183,5 +184,5 @@ func TestMovementGenerationPreservesAbsentControl(t *testing.T) {
 		assert.Empty(t, mvmt.ControlType())
 		assert.Equal(t, "", mvmt.GeoFeature().Properties["control_type"])
 	}
-	assert.Empty(t, network.Nodes[2].ControlType())
+	assert.Empty(t, network.Nodes[gmns.NodeIDFromInt64(2)].ControlType())
 }

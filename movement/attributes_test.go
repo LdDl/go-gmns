@@ -3,6 +3,7 @@ package movement
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func TestSuppliedMovementCodeAndUses(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			mvmt := NewMovement(1, 2, 3, 4, testCase.code, "custom maneuver",
+			mvmt := NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), testCase.code, "custom maneuver",
 				WithControlType("custom control"),
 				WithAllowedUses("delivery, special group"),
 				WithAllowedAgentTypes([]types.AgentType{

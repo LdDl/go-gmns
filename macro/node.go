@@ -94,7 +94,7 @@ func (node *Node) Intersection() int {
 // Zone returns the supplied zone identifier and whether it is set.
 func (node *Node) Zone() (gmns.NodeID, bool) {
 	if node.zoneID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.zoneID, true
 }
@@ -271,7 +271,7 @@ func WithNodeType(nodeType string) func(*Node) {
 // This reference is independent of source provenance across network levels.
 func (node *Node) ParentNode() (gmns.NodeID, bool) {
 	if node.parentNodeID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.parentNodeID, true
 }

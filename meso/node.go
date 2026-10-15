@@ -40,8 +40,8 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:               id,
 		geom:             orb.Point{},
 		geomEuclidean:    orb.Point{},
-		macroNodeID:      -1,
-		macroLinkID:      -1,
+		macroNodeID:      gmns.NodeID{},
+		macroLinkID:      gmns.LinkID{},
 		activityLinkType: types.LINK_UNDEFINED,
 		boundaryType:     types.BOUNDARY_NONE,
 		incomingLinks:    orderedmap.NewOrderedMap(),
@@ -80,12 +80,12 @@ func (node *Node) GeomEuclidean() orb.Point {
 	return node.geomEuclidean
 }
 
-// MacroNode returns identifier of parent macroscopic node. Outputs "-1" if it was not set.
+// MacroNode returns identifier of parent macroscopic node. Returns a zero ID when absent.
 func (node *Node) MacroNode() gmns.NodeID {
 	return node.macroNodeID
 }
 
-// MacroLink returns identifier of parent macroscopic link. Outputs "-1" if it was not set.
+// MacroLink returns identifier of parent macroscopic link. Returns a zero ID when absent.
 func (node *Node) MacroLink() gmns.LinkID {
 	return node.macroLinkID
 }
@@ -93,7 +93,7 @@ func (node *Node) MacroLink() gmns.LinkID {
 // MacroZone returns the supplied zone identifier and whether it is set.
 func (node *Node) MacroZone() (gmns.NodeID, bool) {
 	if node.macroZoneID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.macroZoneID, true
 }
@@ -214,7 +214,7 @@ func WithNodeName(name string) func(*Node) {
 // This reference is independent of source provenance across network levels.
 func (node *Node) ParentNode() (gmns.NodeID, bool) {
 	if node.parentNodeID == nil {
-		return 0, false
+		return gmns.NodeID{}, false
 	}
 	return *node.parentNodeID, true
 }

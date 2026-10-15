@@ -27,16 +27,16 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 		{
 			name: "zero negative and positive zone IDs",
 			zones: map[gmns.NodeID]zoneValue{
-				1: {
-					id:      0,
+				gmns.NodeIDFromInt64(1): {
+					id:      gmns.NodeIDFromInt64(0),
 					present: true,
 				},
-				2: {
-					id:      -1,
+				gmns.NodeIDFromInt64(2): {
+					id:      gmns.NodeIDFromInt64(-1),
 					present: true,
 				},
-				3: {
-					id:      42,
+				gmns.NodeIDFromInt64(3): {
+					id:      gmns.NodeIDFromInt64(42),
 					present: true,
 				},
 			},
@@ -44,8 +44,8 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 		{
 			name: "only junction has a zone",
 			zones: map[gmns.NodeID]zoneValue{
-				2: {
-					id:      42,
+				gmns.NodeIDFromInt64(2): {
+					id:      gmns.NodeIDFromInt64(42),
 					present: true,
 				},
 			},
@@ -53,12 +53,12 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 		{
 			name: "junction zone absent between assigned endpoints",
 			zones: map[gmns.NodeID]zoneValue{
-				1: {
-					id:      -1,
+				gmns.NodeIDFromInt64(1): {
+					id:      gmns.NodeIDFromInt64(-1),
 					present: true,
 				},
-				3: {
-					id:      0,
+				gmns.NodeIDFromInt64(3): {
+					id:      gmns.NodeIDFromInt64(0),
 					present: true,
 				},
 			},
@@ -77,7 +77,7 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 					types.AGENT_WALK,
 				})(link)
 			}
-			firstLink := network.Links[10]
+			firstLink := network.Links[gmns.LinkIDFromInt64(10)]
 			length, hasLength := firstLink.LengthMeters()
 			assert.True(t, hasLength)
 			macro.WithLanesInfo(macro.LanesInfo{
@@ -103,9 +103,9 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 			for _, node := range mesoNet.Nodes {
 				expected := testCase.zones[node.MacroNode()]
 				zoneID, present := node.MacroZone()
-				assert.Equal(t, expected.id, zoneID, "meso node %d", node.ID)
-				assert.Equal(t, expected.present, present, "meso node %d", node.ID)
-				if node.MacroNode() == -1 {
+				assert.Equal(t, expected.id, zoneID, "meso node %v", node.ID)
+				assert.Equal(t, expected.present, present, "meso node %v", node.ID)
+				if node.MacroNode().IsZero() {
 					midLinkNodes++
 					assert.False(t, present, "a mid-link node must not acquire the destination zone")
 				} else {
@@ -154,8 +154,8 @@ func TestZonePresenceSurvivesGeneration(t *testing.T) {
 					interiorNodes++
 				}
 				zoneID, present := node.ZoneID()
-				assert.Equal(t, expected.id, zoneID, "micro node %d", node.ID)
-				assert.Equal(t, expected.present, present, "micro node %d", node.ID)
+				assert.Equal(t, expected.id, zoneID, "micro node %v", node.ID)
+				assert.Equal(t, expected.present, present, "micro node %v", node.ID)
 			}
 			assert.Positive(t, interiorNodes)
 			assert.Positive(t, roadEnds)

@@ -3,6 +3,7 @@ package macro
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb"
 	"github.com/stretchr/testify/assert"
 )
@@ -89,7 +90,7 @@ func TestClearOptionalLinkFields(t *testing.T) {
 		},
 		{
 			name:  "GeometryID",
-			set:   WithGeometryID(0),
+			set:   WithGeometryID(gmns.GeometryIDFromInt64(0)),
 			clear: WithoutGeometryID(),
 			present: func(link *Link) bool {
 				_, present := link.GeometryID()
@@ -109,7 +110,7 @@ func TestClearOptionalLinkFields(t *testing.T) {
 		},
 		{
 			name:  "ParentLinkID",
-			set:   WithParentLinkID(0),
+			set:   WithParentLinkID(gmns.LinkIDFromInt64(0)),
 			clear: WithoutParentLinkID(),
 			present: func(link *Link) bool {
 				_, present := link.ParentLink()
@@ -124,8 +125,8 @@ func TestClearOptionalLinkFields(t *testing.T) {
 				{30, 60},
 				{30.002, 60},
 			}
-			first := NewLinkFrom(1, 2, 3, WithLineGeom(shape), WithLinkName("retained"), testCase.set)
-			second := NewLinkFrom(4, 2, 3, testCase.set)
+			first := NewLinkFrom(gmns.LinkIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3), WithLineGeom(shape), WithLinkName("retained"), testCase.set)
+			second := NewLinkFrom(gmns.LinkIDFromInt64(4), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3), testCase.set)
 			for _, field := range cases {
 				field.set(first)
 			}
@@ -155,10 +156,10 @@ func TestClearOptionalLinkFields(t *testing.T) {
 }
 
 func TestClearOptionalNodeFields(t *testing.T) {
-	node := NewNodeFrom(1,
+	node := NewNodeFrom(gmns.NodeIDFromInt64(1),
 		WithAltitudeMeters(0),
-		WithParentNodeID(0),
-		WithZoneID(0),
+		WithParentNodeID(gmns.NodeIDFromInt64(0)),
+		WithZoneID(gmns.NodeIDFromInt64(0)),
 		WithNodeName("retained"),
 	)
 	WithoutAltitudeMeters()(node)

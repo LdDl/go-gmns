@@ -3,6 +3,7 @@ package movement
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ func TestGeoFeaturePreservesGeometry(t *testing.T) {
 		{37.01, 55.01},
 	}
 	before := shape.Clone()
-	mvmt := NewMovement(1, 2, 3, 4, MOVEMENT_SBT, MOVEMENT_TYPE_THRU,
+	mvmt := NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), MOVEMENT_SBT, MOVEMENT_TYPE_THRU,
 		WithGeom(shape),
 	)
 	data, err := mvmt.GeoFeature().MarshalJSON()

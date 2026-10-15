@@ -25,18 +25,19 @@ func TestGeometryReferencesKeepTravelGeometry(t *testing.T) {
 		{
 			name: "zero ID and zero flag",
 			options: []func(*Link){
-				WithGeometryID(0),
+				WithGeometryID(gmns.GeometryIDFromInt64(0)),
 				WithDirFlag(gmns.DIR_FLAG_NONE),
 			},
+			geometryID:    gmns.GeometryIDFromInt64(0),
 			hasGeometryID: true,
 			hasDirFlag:    true,
 		},
 		{
 			name: "reference without orientation",
 			options: []func(*Link){
-				WithGeometryID(-1),
+				WithGeometryID(gmns.GeometryIDFromInt64(-1)),
 			},
-			geometryID:    -1,
+			geometryID:    gmns.GeometryIDFromInt64(-1),
 			hasGeometryID: true,
 		},
 		{
@@ -50,10 +51,10 @@ func TestGeometryReferencesKeepTravelGeometry(t *testing.T) {
 		{
 			name: "reverse shared geometry",
 			options: []func(*Link){
-				WithGeometryID(7),
+				WithGeometryID(gmns.GeometryIDFromInt64(7)),
 				WithDirFlag(gmns.DIR_FLAG_REVERSE),
 			},
-			geometryID:    7,
+			geometryID:    gmns.GeometryIDFromInt64(7),
 			dirFlag:       gmns.DIR_FLAG_REVERSE,
 			hasGeometryID: true,
 			hasDirFlag:    true,
@@ -66,7 +67,7 @@ func TestGeometryReferencesKeepTravelGeometry(t *testing.T) {
 				{37.005, 55.002},
 				{37.01, 55.01},
 			}
-			link := NewLinkFrom(10, 1, 2, testCase.options...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), testCase.options...)
 			WithLineGeom(shape.Clone())(link)
 			geometryID, hasGeometryID := link.GeometryID()
 			dirFlag, hasDirFlag := link.DirFlag()
@@ -76,8 +77,8 @@ func TestGeometryReferencesKeepTravelGeometry(t *testing.T) {
 			assert.Equal(t, testCase.hasDirFlag, hasDirFlag)
 			assert.Equal(t, shape, link.Geom())
 			assert.Equal(t, shape, link.GeoFeature().Geometry, "existing GeoJSON must retain travel-oriented geometry")
-			assert.Equal(t, gmns.NodeID(1), link.SourceNode())
-			assert.Equal(t, gmns.NodeID(2), link.TargetNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(1), link.SourceNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(2), link.TargetNode())
 		})
 	}
 }
@@ -90,10 +91,10 @@ func TestSharedGeometryReferencesRemainIndependent(t *testing.T) {
 	}
 	backwardShape := forwardShape.Clone()
 	backwardShape.Reverse()
-	sharedReference := WithGeometryID(7)
-	forward := NewLinkFrom(10, 1, 2, WithLineGeom(forwardShape), sharedReference, WithDirFlag(gmns.DIR_FLAG_FORWARD))
-	backward := NewLinkFrom(11, 2, 1, WithLineGeom(backwardShape), sharedReference, WithDirFlag(gmns.DIR_FLAG_REVERSE))
-	WithGeometryID(8)(backward)
+	sharedReference := WithGeometryID(gmns.GeometryIDFromInt64(7))
+	forward := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), WithLineGeom(forwardShape), sharedReference, WithDirFlag(gmns.DIR_FLAG_FORWARD))
+	backward := NewLinkFrom(gmns.LinkIDFromInt64(11), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(1), WithLineGeom(backwardShape), sharedReference, WithDirFlag(gmns.DIR_FLAG_REVERSE))
+	WithGeometryID(gmns.GeometryIDFromInt64(8))(backward)
 	WithDirFlag(gmns.DIR_FLAG_NONE)(backward)
 	forwardID, hasForwardID := forward.GeometryID()
 	backwardID, hasBackwardID := backward.GeometryID()
@@ -103,8 +104,8 @@ func TestSharedGeometryReferencesRemainIndependent(t *testing.T) {
 	assert.True(t, hasBackwardID)
 	assert.True(t, hasForwardFlag)
 	assert.True(t, hasBackwardFlag)
-	assert.Equal(t, gmns.GeometryID(7), forwardID)
-	assert.Equal(t, gmns.GeometryID(8), backwardID)
+	assert.Equal(t, gmns.GeometryIDFromInt64(7), forwardID)
+	assert.Equal(t, gmns.GeometryIDFromInt64(8), backwardID)
 	assert.Equal(t, gmns.DIR_FLAG_FORWARD, forwardFlag)
 	assert.Equal(t, gmns.DIR_FLAG_NONE, backwardFlag)
 	assert.Equal(t, forwardShape, forward.Geom())

@@ -73,9 +73,9 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		geomEuclidean:        orb.LineString{},
 		sourceNodeID:         sourceNodeID,
 		targetNodeID:         targetNodeID,
-		mesoLinkID:           -1,
-		macroLinkID:          -1,
-		macroNodeID:          -1,
+		mesoLinkID:           gmns.LinkID{},
+		macroLinkID:          gmns.LinkID{},
+		macroNodeID:          gmns.NodeID{},
 		cellType:             types.CELL_FORWARD,
 		laneID:               0,
 		isFirstMovementCell:  false,
@@ -103,7 +103,7 @@ func (link *Link) GeomEuclidean() orb.LineString {
 // The boolean distinguishes an absent reference from geometry ID zero.
 func (link *Link) GeometryID() (gmns.GeometryID, bool) {
 	if link.geometryID == nil {
-		return 0, false
+		return gmns.GeometryID{}, false
 	}
 	return *link.geometryID, true
 }
@@ -136,17 +136,17 @@ func (link *Link) TargetNode() gmns.NodeID {
 	return link.targetNodeID
 }
 
-// MesoLink returns identifier of parent mesoscopic link. Outputs "-1" if not set.
+// MesoLink returns identifier of parent mesoscopic link. Returns a zero ID when absent.
 func (link *Link) MesoLink() gmns.LinkID {
 	return link.mesoLinkID
 }
 
-// MacroLink returns identifier of parent macroscopic link. Outputs "-1" if not set.
+// MacroLink returns identifier of parent macroscopic link. Returns a zero ID when absent.
 func (link *Link) MacroLink() gmns.LinkID {
 	return link.macroLinkID
 }
 
-// MacroNode returns identifier of parent macroscopic node. Outputs "-1" if not set.
+// MacroNode returns identifier of parent macroscopic node. Returns a zero ID when absent.
 func (link *Link) MacroNode() gmns.NodeID {
 	return link.macroNodeID
 }
@@ -349,7 +349,7 @@ func WithLinkName(name string) func(*Link) {
 // This reference is independent of source provenance across network levels.
 func (link *Link) ParentLink() (gmns.LinkID, bool) {
 	if link.parentLinkID == nil {
-		return 0, false
+		return gmns.LinkID{}, false
 	}
 	return *link.parentLinkID, true
 }

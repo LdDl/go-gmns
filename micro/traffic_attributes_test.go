@@ -3,6 +3,7 @@ package micro
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
 )
@@ -71,7 +72,7 @@ func TestTrafficAttributesGeoJSON(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			link := NewLinkFrom(1, 2, 3, testCase.options...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3), testCase.options...)
 			data, err := link.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)
 			if err != nil {

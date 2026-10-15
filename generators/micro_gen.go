@@ -64,6 +64,22 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	if err != nil {
 		return nil, err
 	}
+	err = movements.ValidateReferences(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = mesoNet.ValidateSourceReferences(macroNet, movements)
+	if err != nil {
+		return nil, err
+	}
+	macroKind, err := macroIdentifierType(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = movements.ValidateIDType(macroKind)
+	if err != nil {
+		return nil, err
+	}
 
 	options := DefaultMicroGenOptions()
 	if len(opts) > 0 {
@@ -74,7 +90,14 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 		fmt.Print("Generating microscopic network...")
 	}
 
-	microNet := micro.NewNet()
+	kind, err := mesoIdentifierType(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	microNet, err := micro.NewNetWithIDType(kind)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build reverse mapping: macro link ID -> meso link IDs
 	macroLinkMesoLinks := buildMacroToMesoMapping(mesoNet)
@@ -85,14 +108,14 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 		sortedMacroLinkIDs = append(sortedMacroLinkIDs, linkID)
 	}
 	sort.Slice(sortedMacroLinkIDs, func(i, j int) bool {
-		return sortedMacroLinkIDs[i] < sortedMacroLinkIDs[j]
+		return sortedMacroLinkIDs[i].Less(sortedMacroLinkIDs[j])
 	})
 	for _, macroLinkID := range sortedMacroLinkIDs {
 		macroLink := macroNet.Links[macroLinkID]
 		mesoLinkIDs := macroLinkMesoLinks[macroLink.ID]
 		err := processMacroLink(macroNet, mesoNet, microNet, macroLink, mesoLinkIDs, options)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to process macro link %d", macroLink.ID)
+			return nil, errors.Wrapf(err, "failed to process macro link %v", macroLink.ID)
 		}
 	}
 
@@ -110,7 +133,7 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	}
 
 	if options.Verbose {
-		fmt.Printf(" Done. Nodes: %d, Links: %d\n", len(microNet.Nodes), len(microNet.Links))
+		fmt.Printf(" Done. Nodes: %v, Links: %v\n", len(microNet.Nodes), len(microNet.Links))
 	}
 
 	return microNet, nil
@@ -125,18 +148,30 @@ func buildMacroToMesoMapping(mesoNet *meso.Net) map[gmns.LinkID][]gmns.LinkID {
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 	for _, mesoLinkID := range sortedMesoLinkIDs {
 		mesoLink := mesoNet.Links[mesoLinkID]
 		macroLinkID := mesoLink.MacroLink()
-		if macroLinkID < 0 {
-			continue // Skip connection links (i.e. movements)
+		if macroLinkID.IsZero() {
+			// Skip connection links (i.e. movements).
+			continue
 		}
 		if _, ok := result[macroLinkID]; !ok {
 			result[macroLinkID] = make([]gmns.LinkID, 0, 1)
 		}
 		result[macroLinkID] = append(result[macroLinkID], mesoLink.ID)
+	}
+	// Segment order is calculated state, independent of identifier spelling.
+	for _, linkIDs := range result {
+		sort.Slice(linkIDs, func(first, second int) bool {
+			firstLink := mesoNet.Links[linkIDs[first]]
+			secondLink := mesoNet.Links[linkIDs[second]]
+			if firstLink.SegmentIdx() != secondLink.SegmentIdx() {
+				return firstLink.SegmentIdx() < secondLink.SegmentIdx()
+			}
+			return firstLink.ID.Less(secondLink.ID)
+		})
 	}
 	return result
 }
@@ -159,13 +194,13 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 		sortedMicroNodeIDs = append(sortedMicroNodeIDs, nodeID)
 	}
 	sort.Slice(sortedMicroNodeIDs, func(i, j int) bool {
-		return sortedMicroNodeIDs[i] < sortedMicroNodeIDs[j]
+		return sortedMicroNodeIDs[i].Less(sortedMicroNodeIDs[j])
 	})
 
 	for _, nodeID := range sortedMicroNodeIDs {
 		node := microNet.Nodes[nodeID]
 		mesoLinkID := node.MesoLink()
-		if mesoLinkID < 0 {
+		if mesoLinkID.IsZero() {
 			continue
 		}
 		laneID := node.LaneID()
@@ -187,7 +222,7 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, mesoLinkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 
 	for _, mesoLinkID := range sortedMesoLinkIDs {
@@ -240,12 +275,12 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 	for _, mesoLinkID := range mesoLinkIDs {
 		mesoLink, ok := mesoNet.Links[mesoLinkID]
 		if !ok {
-			return fmt.Errorf("meso link %d not found", mesoLinkID)
+			return fmt.Errorf("meso link %v not found", mesoLinkID)
 		}
 
 		err := createMicroNodesForMesoLink(microNet, mesoLink, originalLanesNum, hasBike, hasWalk, opts, localMapping)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create micro nodes for meso link %d", mesoLinkID)
+			return errors.Wrapf(err, "failed to create micro nodes for meso link %v", mesoLinkID)
 		}
 	}
 
@@ -271,7 +306,7 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 		}
 		err := createMicroLinksForMesoLink(microNet, mesoLink, mainAgents, hasBike, hasWalk, localMapping)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create micro links for meso link %d", mesoLinkID)
+			return errors.Wrapf(err, "failed to create micro links for meso link %v", mesoLinkID)
 		}
 	}
 
@@ -359,7 +394,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			laneNodeIDs = append(laneNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][laneID] = laneNodeIDs
@@ -385,7 +423,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			bikeNodeIDs = append(bikeNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][bikeLaneID] = bikeNodeIDs
@@ -411,7 +452,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			walkNodeIDs = append(walkNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][walkLaneID] = walkNodeIDs
@@ -645,11 +689,11 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 
 	sourceNode, ok := microNet.Nodes[sourceNodeID]
 	if !ok {
-		return fmt.Errorf("source micro node %d not found", sourceNodeID)
+		return fmt.Errorf("source micro node %v not found", sourceNodeID)
 	}
 	targetNode, ok := microNet.Nodes[targetNodeID]
 	if !ok {
-		return fmt.Errorf("target micro node %d not found", targetNodeID)
+		return fmt.Errorf("target micro node %v not found", targetNodeID)
 	}
 
 	geom := orb.LineString{sourceNode.Geom(), targetNode.Geom()}
@@ -680,7 +724,10 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 	if hasCapacity {
 		micro.WithCapacity(capacity)(link)
 	}
-	microNet.AddLink(link)
+	linkErr := microNet.AddLink(link)
+	if linkErr != nil {
+		return linkErr
+	}
 	sourceNode.AddOutcomingLink(linkID)
 	targetNode.AddIncomingLink(linkID)
 
@@ -698,20 +745,20 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 
 	for _, mesoLinkID := range sortedMesoLinkIDs {
 		mesoLink := mesoNet.Links[mesoLinkID]
 		// Process only movement meso links
-		if mesoLink.Movement() < 0 {
+		if mesoLink.Movement().IsZero() {
 			continue
 		}
 
 		incomeMesoLinkID := mesoLink.MovementMesoLinkIncome()
 		outcomeMesoLinkID := mesoLink.MovementMesoLinkOutcome()
 
-		if incomeMesoLinkID < 0 || outcomeMesoLinkID < 0 {
+		if incomeMesoLinkID.IsZero() || outcomeMesoLinkID.IsZero() {
 			continue
 		}
 
@@ -780,7 +827,10 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 					micro.WithNodeLaneID(laneOffset+1),
 					micro.WithCellIndex(cellIdx),
 				)
-				microNet.AddNode(node)
+				nodeErr := microNet.AddNode(node)
+				if nodeErr != nil {
+					return nodeErr
+				}
 
 				// Create link from last node to this node
 				lastNode, _ := microNet.Nodes[lastNodeID]
@@ -812,7 +862,10 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 				if hasCapacity {
 					micro.WithCapacity(capacity)(link)
 				}
-				microNet.AddLink(link)
+				linkErr := microNet.AddLink(link)
+				if linkErr != nil {
+					return linkErr
+				}
 				lastNode.AddOutcomingLink(linkID)
 				node.AddIncomingLink(linkID)
 
@@ -850,7 +903,10 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 			if hasCapacity {
 				micro.WithCapacity(capacity)(link)
 			}
-			microNet.AddLink(link)
+			linkErr := microNet.AddLink(link)
+			if linkErr != nil {
+				return linkErr
+			}
 			lastNode.AddOutcomingLink(linkID)
 			endNode.AddIncomingLink(linkID)
 		}
@@ -921,7 +977,7 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 		sortedMvmtIDs = append(sortedMvmtIDs, mvmtID)
 	}
 	sort.Slice(sortedMvmtIDs, func(i, j int) bool {
-		return sortedMvmtIDs[i] < sortedMvmtIDs[j]
+		return sortedMvmtIDs[i].Less(sortedMvmtIDs[j])
 	})
 	for _, mvmtID := range sortedMvmtIDs {
 		mvmt := movements[mvmtID]
@@ -934,7 +990,7 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 		sortedMacroNodeIDs = append(sortedMacroNodeIDs, nodeID)
 	}
 	sort.Slice(sortedMacroNodeIDs, func(i, j int) bool {
-		return sortedMacroNodeIDs[i] < sortedMacroNodeIDs[j]
+		return sortedMacroNodeIDs[i].Less(sortedMacroNodeIDs[j])
 	})
 
 	for _, macroNodeID := range sortedMacroNodeIDs {

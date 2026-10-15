@@ -78,9 +78,9 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		segmentIdx:    0,
 		isConnection:  false,
 		// Default movement
-		movementID:                    gmns.MovementID(-1),
-		movementMesoLinkIncome:        gmns.LinkID(-1),
-		movementMesoLinkOutcome:       gmns.LinkID(-1),
+		movementID:                    gmns.MovementID{},
+		movementMesoLinkIncome:        gmns.LinkID{},
+		movementMesoLinkOutcome:       gmns.LinkID{},
 		movementIncomeLaneStartSeqID:  -1,
 		movementOutcomeLaneStartSeqID: -1,
 		// Default parent data
@@ -107,7 +107,7 @@ func (link *Link) GeomEuclidean() orb.LineString {
 // The boolean distinguishes an absent reference from geometry ID zero.
 func (link *Link) GeometryID() (gmns.GeometryID, bool) {
 	if link.geometryID == nil {
-		return 0, false
+		return gmns.GeometryID{}, false
 	}
 	return *link.geometryID, true
 }
@@ -142,22 +142,22 @@ func (link *Link) LengthMeters() (float64, bool) {
 	return *link.lengthMeters, true
 }
 
-// SourceNode returns identifier of source node. Outputs "-1" if it was not set.
+// SourceNode returns identifier of source node. Returns a zero ID when absent.
 func (link *Link) SourceNode() gmns.NodeID {
 	return link.sourceNodeID
 }
 
-// TargetNode returns identifier of target node. Outputs "-1" if it was not set.
+// TargetNode returns identifier of target node. Returns a zero ID when absent.
 func (link *Link) TargetNode() gmns.NodeID {
 	return link.targetNodeID
 }
 
-// MacroNode returns identifier of parent macroscopic node. Outputs "-1" if it was not set.
+// MacroNode returns identifier of parent macroscopic node. Returns a zero ID when absent.
 func (link *Link) MacroNode() gmns.NodeID {
 	return link.macroNodeID
 }
 
-// MacroLink returns identifier of parent macroscopic link. Outputs "-1" if it was not set.
+// MacroLink returns identifier of parent macroscopic link. Returns a zero ID when absent.
 func (link *Link) MacroLink() gmns.LinkID {
 	return link.macroLinkID
 }
@@ -172,7 +172,7 @@ func (link *Link) IsConnection() bool {
 	return link.isConnection
 }
 
-// Movement returns parent movement identifier. Outputs "-1" if it was not set.
+// Movement returns parent movement identifier. Returns a zero ID when absent.
 func (link *Link) Movement() gmns.MovementID {
 	return link.movementID
 }
@@ -182,12 +182,12 @@ func (link *Link) MvmtTextID() movement.MovementCompositeType {
 	return link.movementCompositeType
 }
 
-// MovementMesoLinkIncome returns incoming mesoscopic link identifier in case if the given link is connection two other mesoscopic links. Outputs "-1" if it was not set.
+// MovementMesoLinkIncome returns incoming mesoscopic link identifier in case if the given link is connection two other mesoscopic links. Returns a zero ID when absent.
 func (link *Link) MovementMesoLinkIncome() gmns.LinkID {
 	return link.movementMesoLinkIncome
 }
 
-// MovementMesoLinkOutcome returns incoming mesoscopic link identifier in case if the given link is connection two other mesoscopic links. Outputs "-1" if it was not set.
+// MovementMesoLinkOutcome returns incoming mesoscopic link identifier in case if the given link is connection two other mesoscopic links. Returns a zero ID when absent.
 func (link *Link) MovementMesoLinkOutcome() gmns.LinkID {
 	return link.movementMesoLinkOutcome
 }
@@ -408,7 +408,7 @@ func WithLinkName(name string) func(*Link) {
 // This reference is independent of source provenance across network levels.
 func (link *Link) ParentLink() (gmns.LinkID, bool) {
 	if link.parentLinkID == nil {
-		return 0, false
+		return gmns.LinkID{}, false
 	}
 	return *link.parentLinkID, true
 }

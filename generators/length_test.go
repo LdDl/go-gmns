@@ -52,9 +52,9 @@ func TestGeneratorsRejectUnusableRequiredLengths(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			macroNet := macro.NewNet()
 			mesoNet := meso.NewNet()
-			for _, linkID := range []gmns.LinkID{20, 10} {
-				macroLink := macro.NewLinkFrom(linkID, 1, 2)
-				mesoLink := meso.NewLinkFrom(linkID, 1, 2, meso.WithLineMacroLinkID(10))
+			for _, linkID := range []gmns.LinkID{gmns.LinkIDFromInt64(20), gmns.LinkIDFromInt64(10)} {
+				macroLink := macro.NewLinkFrom(linkID, gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2))
+				mesoLink := meso.NewLinkFrom(linkID, gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), meso.WithLineMacroLinkID(gmns.LinkIDFromInt64(10)))
 				if testCase.present {
 					macro.WithLengthMeters(testCase.value)(macroLink)
 					meso.WithLengthMeters(testCase.value)(mesoLink)
@@ -76,8 +76,8 @@ func TestGeneratorsRejectUnusableRequiredLengths(t *testing.T) {
 				assert.Contains(t, err.Error(), "meso link 10")
 				assert.Contains(t, err.Error(), "length")
 			}
-			macroLength, macroPresent := macroNet.Links[10].LengthMeters()
-			mesoLength, mesoPresent := mesoNet.Links[10].LengthMeters()
+			macroLength, macroPresent := macroNet.Links[gmns.LinkIDFromInt64(10)].LengthMeters()
+			mesoLength, mesoPresent := mesoNet.Links[gmns.LinkIDFromInt64(10)].LengthMeters()
 			assert.Equal(t, testCase.present, macroPresent)
 			assert.Equal(t, testCase.present, mesoPresent)
 			if math.IsNaN(testCase.value) {
@@ -118,7 +118,7 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 	}
 	connectorCount := 0
 	for linkID, original := range mesoNet.Links {
-		if original.MacroNode() != 2 {
+		if original.MacroNode() != gmns.NodeIDFromInt64(2) {
 			continue
 		}
 		connectorCount++
@@ -126,7 +126,7 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 		assert.True(t, hasLanes)
 		mesoNet.Links[linkID] = meso.NewLinkFrom(linkID, original.SourceNode(), original.TargetNode(),
 			meso.WithLineMacroNodeID(original.MacroNode()),
-			meso.WithLineMacroLinkID(-1),
+			meso.WithLineMacroLinkID(gmns.LinkID{}),
 			meso.WithLanesNum(lanesNum),
 			meso.WithMovementID(original.Movement()),
 			meso.WithMovementMesoLinkIncome(original.MovementMesoLinkIncome()),
@@ -148,7 +148,7 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 		assert.True(t, present)
 		assert.Positive(t, length)
 		assert.False(t, math.IsNaN(length) || math.IsInf(length, 0))
-		if link.MacroNode() == 2 {
+		if link.MacroNode() == gmns.NodeIDFromInt64(2) {
 			movementCells++
 		}
 	}
@@ -158,7 +158,7 @@ func TestMicroUsesPreparedRoadLengths(t *testing.T) {
 		assert.False(t, present, "micro generation must not backfill source macro lengths")
 	}
 	for _, link := range mesoNet.Links {
-		if link.MacroNode() == 2 {
+		if link.MacroNode() == gmns.NodeIDFromInt64(2) {
 			_, present := link.LengthMeters()
 			assert.False(t, present, "micro generation must not backfill source connector lengths")
 		}

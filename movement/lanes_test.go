@@ -3,6 +3,7 @@ package movement
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,7 +69,7 @@ func TestLanePresenceGeoJSON(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			mvmt := NewMovement(1, 2, 3, 4, MOVEMENT_SBT, MOVEMENT_TYPE_THRU, testCase.options...)
+			mvmt := NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), MOVEMENT_SBT, MOVEMENT_TYPE_THRU, testCase.options...)
 			data, err := mvmt.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)
 			if err != nil {

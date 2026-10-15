@@ -1,35 +1,11 @@
 package movement
 
 import (
-	"sync"
-
 	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/osm"
 )
-
-type autoInc struct {
-	sync.Mutex
-	id gmns.MovementID
-}
-
-func (a *autoInc) ID() (id gmns.MovementID) {
-	a.Lock()
-	defer a.Unlock()
-
-	id = a.id
-	a.id++
-	return
-}
-
-var (
-	ai autoInc
-)
-
-func GenMovementID() gmns.MovementID {
-	return ai.ID()
-}
 
 // MovementsStorage is storage for the movements
 type MovementsStorage map[gmns.MovementID]*Movement

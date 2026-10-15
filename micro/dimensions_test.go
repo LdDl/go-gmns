@@ -57,7 +57,7 @@ func TestAltitudeGeoJSON(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			point := orb.Point{37, 55}
-			node := NewNodeFrom(1, testCase.options...)
+			node := NewNodeFrom(gmns.NodeIDFromInt64(1), testCase.options...)
 			WithPointGeom(point)(node)
 
 			data, err := node.GeoFeature().MarshalJSON()
@@ -129,7 +129,7 @@ func TestRightOfWayWidthGeoJSON(t *testing.T) {
 				{37, 55},
 				{37.01, 55.01},
 			}
-			link := NewLinkFrom(10, 1, 2)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2))
 			WithLaneID(2)(link)
 			WithLengthMeters(100)(link)
 			WithLineGeom(shape.Clone())(link)
@@ -165,8 +165,8 @@ func TestRightOfWayWidthGeoJSON(t *testing.T) {
 			assert.Equal(t, 2, link.LaneID())
 			assert.Equal(t, shape, link.Geom())
 			assert.Equal(t, shape, feature.Geometry)
-			assert.Equal(t, gmns.NodeID(1), link.SourceNode())
-			assert.Equal(t, gmns.NodeID(2), link.TargetNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(1), link.SourceNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(2), link.TargetNode())
 		})
 	}
 }

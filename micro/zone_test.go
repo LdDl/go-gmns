@@ -17,19 +17,19 @@ type zoneCase struct {
 }
 
 func TestSetZoneIDPreservesSuppliedIDs(t *testing.T) {
-	node := NewNodeFrom(1)
+	node := NewNodeFrom(gmns.NodeIDFromInt64(1))
 	zoneID, present := node.ZoneID()
 	assert.False(t, present)
 	assert.Zero(t, zoneID)
-	node.SetZoneID(-1)
+	node.SetZoneID(gmns.NodeIDFromInt64(-1))
 	zoneID, present = node.ZoneID()
 	assert.True(t, present)
-	assert.Equal(t, gmns.NodeID(-1), zoneID)
-	node.SetZoneID(0)
+	assert.Equal(t, gmns.NodeIDFromInt64(-1), zoneID)
+	node.SetZoneID(gmns.NodeIDFromInt64(0))
 	zoneID, present = node.ZoneID()
 	assert.True(t, present)
-	assert.Zero(t, zoneID)
-	assert.Equal(t, gmns.NodeID(0), node.GeoFeature().Properties["zone_id"])
+	assert.Equal(t, gmns.NodeIDFromInt64(0), zoneID)
+	assert.Equal(t, gmns.NodeIDFromInt64(0), node.GeoFeature().Properties["zone_id"])
 }
 
 func TestZoneGeoJSON(t *testing.T) {
@@ -40,41 +40,43 @@ func TestZoneGeoJSON(t *testing.T) {
 		{
 			name: "zero is a supplied zone ID",
 			options: []func(*Node){
-				WithZoneID(0),
+				WithZoneID(gmns.NodeIDFromInt64(0)),
 			},
+			zoneID:  gmns.NodeIDFromInt64(0),
 			present: true,
 		},
 		{
 			name: "negative one is a supplied zone ID",
 			options: []func(*Node){
-				WithZoneID(-1),
+				WithZoneID(gmns.NodeIDFromInt64(-1)),
 			},
-			zoneID:  -1,
+			zoneID:  gmns.NodeIDFromInt64(-1),
 			present: true,
 		},
 		{
 			name: "positive zone ID",
 			options: []func(*Node){
-				WithZoneID(42),
+				WithZoneID(gmns.NodeIDFromInt64(42)),
 			},
-			zoneID:  42,
+			zoneID:  gmns.NodeIDFromInt64(42),
 			present: true,
 		},
 		{
 			name: "replace a zone with zero",
 			options: []func(*Node){
-				WithZoneID(42),
-				WithZoneID(0),
+				WithZoneID(gmns.NodeIDFromInt64(42)),
+				WithZoneID(gmns.NodeIDFromInt64(0)),
 			},
+			zoneID:  gmns.NodeIDFromInt64(0),
 			present: true,
 		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			point := orb.Point{37, 55}
-			node := NewNodeFrom(7, testCase.options...)
+			node := NewNodeFrom(gmns.NodeIDFromInt64(7), testCase.options...)
 			WithPointGeom(point)(node)
-			WithParentNodeID(99)(node)
+			WithParentNodeID(gmns.NodeIDFromInt64(99))(node)
 			data, err := node.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)
 			if err != nil {
@@ -88,17 +90,19 @@ func TestZoneGeoJSON(t *testing.T) {
 			value, exists := feature.Properties["zone_id"]
 			assert.True(t, exists)
 			if testCase.present {
-				assert.Equal(t, float64(testCase.zoneID), value)
+				integer, isInteger := testCase.zoneID.Int64()
+				assert.True(t, isInteger)
+				assert.Equal(t, float64(integer), value)
 			} else {
 				assert.Nil(t, value, "node identity and parent reference do not imply a zone")
 			}
 			zoneID, present := node.ZoneID()
 			assert.Equal(t, testCase.zoneID, zoneID)
 			assert.Equal(t, testCase.present, present)
-			assert.Equal(t, gmns.NodeID(7), node.ID)
+			assert.Equal(t, gmns.NodeIDFromInt64(7), node.ID)
 			parentID, hasParent := node.ParentNode()
 			assert.True(t, hasParent)
-			assert.Equal(t, gmns.NodeID(99), parentID)
+			assert.Equal(t, gmns.NodeIDFromInt64(99), parentID)
 			assert.Equal(t, point, node.Geom())
 			assert.Equal(t, point, feature.Geometry)
 		})

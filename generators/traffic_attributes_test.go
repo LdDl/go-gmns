@@ -83,8 +83,8 @@ func TestTrafficAttributesSurviveGeneration(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			network := controlTestNetwork(t, types.CONTROL_TYPE_IS_SIGNAL)
 			expectedByMacroLink := map[gmns.LinkID]trafficValues{
-				10: testCase.incoming,
-				11: testCase.outgoing,
+				gmns.LinkIDFromInt64(10): testCase.incoming,
+				gmns.LinkIDFromInt64(11): testCase.outgoing,
 			}
 			for linkID, expected := range expectedByMacroLink {
 				original := network.Links[linkID]
@@ -128,14 +128,14 @@ func TestTrafficAttributesSurviveGeneration(t *testing.T) {
 			roadCount := 0
 			for _, link := range mesoNet.Links {
 				expected, exists := expectedByMacroLink[link.MacroLink()]
-				if link.MacroNode() == 2 {
+				if link.MacroNode() == gmns.NodeIDFromInt64(2) {
 					expected = testCase.incoming
 					exists = true
 					connectorCount++
 				} else {
 					roadCount++
 				}
-				assert.True(t, exists, "meso link %d must retain its source", link.ID)
+				assert.True(t, exists, "meso link %v must retain its source", link.ID)
 				expectedByMesoLink[link.ID] = expected
 				freeSpeed, hasSpeed := link.FreeSpeed()
 				capacity, hasCapacity := link.Capacity()
@@ -157,14 +157,14 @@ func TestTrafficAttributesSurviveGeneration(t *testing.T) {
 			laneChanges := 0
 			for _, link := range microNet.Links {
 				expected, exists := expectedByMesoLink[link.MesoLink()]
-				assert.True(t, exists, "micro link %d must retain its meso source", link.ID)
+				assert.True(t, exists, "micro link %v must retain its meso source", link.ID)
 				freeSpeed, hasSpeed := link.FreeSpeed()
 				capacity, hasCapacity := link.Capacity()
 				assert.Equal(t, expected.freeSpeed, freeSpeed)
 				assert.Equal(t, expected.hasSpeed, hasSpeed)
 				assert.Equal(t, expected.capacity, capacity)
 				assert.Equal(t, expected.hasCapacity, hasCapacity)
-				if link.MacroNode() == 2 {
+				if link.MacroNode() == gmns.NodeIDFromInt64(2) {
 					movementCells++
 				}
 				if link.IsFirstMovementCell() {

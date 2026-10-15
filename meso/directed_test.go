@@ -41,7 +41,7 @@ func TestDirectedGeoJSON(t *testing.T) {
 				{37, 55},
 				{37.01, 55.01},
 			}
-			link := NewLinkFrom(10, 1, 2, testCase.options...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), testCase.options...)
 			WithLineGeom(shape.Clone())(link)
 			WithDirFlag(gmns.DIR_FLAG_NONE)(link)
 
@@ -59,8 +59,8 @@ func TestDirectedGeoJSON(t *testing.T) {
 			assert.Equal(t, testCase.want, link.Directed())
 			assert.Equal(t, shape, feature.Geometry)
 			assert.Equal(t, shape, link.Geom())
-			assert.Equal(t, gmns.NodeID(1), link.SourceNode())
-			assert.Equal(t, gmns.NodeID(2), link.TargetNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(1), link.SourceNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(2), link.TargetNode())
 
 		})
 	}

@@ -74,28 +74,28 @@ func TestFixGapsLanePresence(t *testing.T) {
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
 			macroNet := macro.NewNet()
-			macroNet.Nodes[2] = macro.NewNodeFrom(2)
-			macroNet.Links[3] = macro.NewLinkFrom(3, 1, 2)
-			macroNet.Links[4] = macro.NewLinkFrom(4, 2, 3)
+			macroNet.Nodes[gmns.NodeIDFromInt64(2)] = macro.NewNodeFrom(gmns.NodeIDFromInt64(2))
+			macroNet.Links[gmns.LinkIDFromInt64(3)] = macro.NewLinkFrom(gmns.LinkIDFromInt64(3), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2))
+			macroNet.Links[gmns.LinkIDFromInt64(4)] = macro.NewLinkFrom(gmns.LinkIDFromInt64(4), gmns.NodeIDFromInt64(2), gmns.NodeIDFromInt64(3))
 			mesoNet := meso.NewNet()
-			mesoNet.Links[10] = meso.NewLinkFrom(10, 1, 2, meso.WithLanesNum(1), meso.WithLanesChange([2]int{testCase.laneOffset, 0}))
-			mesoNet.Links[20] = meso.NewLinkFrom(20, 3, 4, meso.WithLanesNum(1), meso.WithLanesChange([2]int{testCase.laneOffset, 0}))
+			mesoNet.Links[gmns.LinkIDFromInt64(10)] = meso.NewLinkFrom(gmns.LinkIDFromInt64(10), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(2), meso.WithLanesNum(1), meso.WithLanesChange([2]int{testCase.laneOffset, 0}))
+			mesoNet.Links[gmns.LinkIDFromInt64(20)] = meso.NewLinkFrom(gmns.LinkIDFromInt64(20), gmns.NodeIDFromInt64(3), gmns.NodeIDFromInt64(4), meso.WithLanesNum(1), meso.WithLanesChange([2]int{testCase.laneOffset, 0}))
 			microNet := micro.NewNet()
-			microNet.AddNode(micro.NewNodeFrom(100, micro.WithNodeMesoLinkID(10), micro.WithNodeLaneID(1), micro.WithCellIndex(0)))
-			microNet.AddNode(micro.NewNodeFrom(200, micro.WithNodeMesoLinkID(20), micro.WithNodeLaneID(1), micro.WithCellIndex(0)))
-			microNet.AddNode(micro.NewNodeFrom(201, micro.WithNodeMesoLinkID(20), micro.WithNodeLaneID(1), micro.WithCellIndex(1)))
-			microNet.AddLink(micro.NewLinkFrom(300, 200, 201))
-			microNet.Nodes[200].AddOutcomingLink(300)
+			microNet.AddNode(micro.NewNodeFrom(gmns.NodeIDFromInt64(100), micro.WithNodeMesoLinkID(gmns.LinkIDFromInt64(10)), micro.WithNodeLaneID(1), micro.WithCellIndex(0)))
+			microNet.AddNode(micro.NewNodeFrom(gmns.NodeIDFromInt64(200), micro.WithNodeMesoLinkID(gmns.LinkIDFromInt64(20)), micro.WithNodeLaneID(1), micro.WithCellIndex(0)))
+			microNet.AddNode(micro.NewNodeFrom(gmns.NodeIDFromInt64(201), micro.WithNodeMesoLinkID(gmns.LinkIDFromInt64(20)), micro.WithNodeLaneID(1), micro.WithCellIndex(1)))
+			microNet.AddLink(micro.NewLinkFrom(gmns.LinkIDFromInt64(300), gmns.NodeIDFromInt64(200), gmns.NodeIDFromInt64(201)))
+			microNet.Nodes[gmns.NodeIDFromInt64(200)].AddOutcomingLink(gmns.LinkIDFromInt64(300))
 			macroLinkMesoLinks := map[gmns.LinkID][]gmns.LinkID{
-				3: {10},
-				4: {20},
+				gmns.LinkIDFromInt64(3): {gmns.LinkIDFromInt64(10)},
+				gmns.LinkIDFromInt64(4): {gmns.LinkIDFromInt64(20)},
 			}
 			flags := &MovementFlags{
 				DownstreamIsTarget: map[gmns.LinkID]bool{
-					3: true,
+					gmns.LinkIDFromInt64(3): true,
 				},
 			}
-			mvmt := movement.NewMovement(1, 2, 3, 4, movement.MOVEMENT_SBT, movement.MOVEMENT_TYPE_THRU, testCase.options...)
+			mvmt := movement.NewMovement(gmns.MovementIDFromInt64(1), gmns.NodeIDFromInt64(2), gmns.LinkIDFromInt64(3), gmns.LinkIDFromInt64(4), movement.MOVEMENT_SBT, movement.MOVEMENT_TYPE_THRU, testCase.options...)
 			before := mvmt.GeoFeature().Properties
 			movements := movement.NewMovementsStorage()
 			movements[mvmt.ID] = mvmt
@@ -105,11 +105,11 @@ func TestFixGapsLanePresence(t *testing.T) {
 				return
 			}
 			if testCase.joined {
-				assert.NotContains(t, microNet.Nodes, gmns.NodeID(200))
-				assert.Equal(t, gmns.NodeID(100), microNet.Links[300].SourceNode())
+				assert.NotContains(t, microNet.Nodes, gmns.NodeIDFromInt64(200))
+				assert.Equal(t, gmns.NodeIDFromInt64(100), microNet.Links[gmns.LinkIDFromInt64(300)].SourceNode())
 			} else {
-				assert.Contains(t, microNet.Nodes, gmns.NodeID(200))
-				assert.Equal(t, gmns.NodeID(200), microNet.Links[300].SourceNode())
+				assert.Contains(t, microNet.Nodes, gmns.NodeIDFromInt64(200))
+				assert.Equal(t, gmns.NodeIDFromInt64(200), microNet.Links[gmns.LinkIDFromInt64(300)].SourceNode())
 			}
 			assert.Equal(t, before, mvmt.GeoFeature().Properties, "generation must not fill absent stored endpoints")
 		})

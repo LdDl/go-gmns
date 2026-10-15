@@ -154,8 +154,8 @@ func TestFindMovementGeom(t *testing.T) {
 	assert.Equal(t, len(expectedMovementGeom), len(ansMovementGeom), "Incorrect number of points in movement geometry")
 	for i := range ansMovementGeom {
 		pt := ansMovementGeom[i]
-		assert.InDelta(t, expectedMovementGeom[i][0], pt[0], precision, fmt.Sprintf("Wrong X (longitude) in EPSG:3857 at pos #%d", i))
-		assert.InDelta(t, expectedMovementGeom[i][1], pt[1], precision, fmt.Sprintf("Wrong Y (latitude) in EPSG:3857 at pos #%d", i))
+		assert.InDelta(t, expectedMovementGeom[i][0], pt[0], precision, fmt.Sprintf("Wrong X (longitude) in EPSG:3857 at pos #%v", i))
+		assert.InDelta(t, expectedMovementGeom[i][1], pt[1], precision, fmt.Sprintf("Wrong Y (latitude) in EPSG:3857 at pos #%v", i))
 	}
 
 	// Check movement with ID 17 (ib - 5, ob - 31)
@@ -166,7 +166,7 @@ func TestFindMovementGeom(t *testing.T) {
 	assert.Equal(t, len(expectedMovementGeom), len(ansMovementGeom), "Incorrect number of points in movement geometry")
 	for i := range ansMovementGeom {
 		pt := ansMovementGeom[i]
-		assert.InDelta(t, expectedMovementGeom[i][0], pt[0], precision, fmt.Sprintf("Wrong X (longitude) in EPSG:3857 at pos #%d", i))
-		assert.InDelta(t, expectedMovementGeom[i][1], pt[1], precision, fmt.Sprintf("Wrong Y (latitude) in EPSG:3857 at pos #%d", i))
+		assert.InDelta(t, expectedMovementGeom[i][0], pt[0], precision, fmt.Sprintf("Wrong X (longitude) in EPSG:3857 at pos #%v", i))
+		assert.InDelta(t, expectedMovementGeom[i][1], pt[1], precision, fmt.Sprintf("Wrong Y (latitude) in EPSG:3857 at pos #%v", i))
 	}
 }

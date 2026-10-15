@@ -157,7 +157,7 @@ func (link *Link) GeomEuclidean() orb.LineString {
 // The boolean distinguishes an absent reference from geometry ID zero.
 func (link *Link) GeometryID() (gmns.GeometryID, bool) {
 	if link.geometryID == nil {
-		return 0, false
+		return gmns.GeometryID{}, false
 	}
 	return *link.geometryID, true
 }
@@ -203,12 +203,12 @@ func (link *Link) OSMWay() osm.WayID {
 	return link.osmWayID
 }
 
-// SourceNode returns identifier of source node. Outputs "-1" if it was not set.
+// SourceNode returns identifier of source node. Returns a zero ID when absent.
 func (link *Link) SourceNode() gmns.NodeID {
 	return link.sourceNodeID
 }
 
-// TargetNode returns identifier of target node. Outputs "-1" if it was not set.
+// TargetNode returns identifier of target node. Returns a zero ID when absent.
 func (link *Link) TargetNode() gmns.NodeID {
 	return link.targetNodeID
 }
@@ -431,7 +431,7 @@ func WithBidirectionalSource(wasBidirectional bool) func(*Link) {
 // This reference is independent of source provenance across network levels.
 func (link *Link) ParentLink() (gmns.LinkID, bool) {
 	if link.parentLinkID == nil {
-		return 0, false
+		return gmns.LinkID{}, false
 	}
 	return *link.parentLinkID, true
 }

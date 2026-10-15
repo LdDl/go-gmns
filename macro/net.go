@@ -32,12 +32,12 @@ func (net *Net) ValidateParentReferences() error {
 		nodeIDs = append(nodeIDs, nodeID)
 	}
 	sort.Slice(nodeIDs, func(first, second int) bool {
-		return nodeIDs[first] < nodeIDs[second]
+		return nodeIDs[first].Less(nodeIDs[second])
 	})
 	for _, nodeID := range nodeIDs {
 		node := net.Nodes[nodeID]
 		if node == nil {
-			return fmt.Errorf("node %d: %w", nodeID, ErrNodeNotFound)
+			return fmt.Errorf("node %v: %w", nodeID, ErrNodeNotFound)
 		}
 		parentID, present := node.ParentNode()
 		if !present {
@@ -45,10 +45,10 @@ func (net *Net) ValidateParentReferences() error {
 		}
 		parent := net.Nodes[parentID]
 		if parent == nil {
-			return fmt.Errorf("node %d: parent_node_id %d: %w", node.ID, parentID, ErrNodeNotFound)
+			return fmt.Errorf("node %v: parent_node_id %v: %w", node.ID, parentID, ErrNodeNotFound)
 		}
 		if parent.ID != parentID {
-			return fmt.Errorf("node %d: parent_node_id %d resolves to node with ID %d", node.ID, parentID, parent.ID)
+			return fmt.Errorf("node %v: parent_node_id %v resolves to node with ID %v", node.ID, parentID, parent.ID)
 		}
 	}
 
@@ -57,12 +57,12 @@ func (net *Net) ValidateParentReferences() error {
 		linkIDs = append(linkIDs, linkID)
 	}
 	sort.Slice(linkIDs, func(first, second int) bool {
-		return linkIDs[first] < linkIDs[second]
+		return linkIDs[first].Less(linkIDs[second])
 	})
 	for _, linkID := range linkIDs {
 		link := net.Links[linkID]
 		if link == nil {
-			return fmt.Errorf("link %d: %w", linkID, ErrLinkNotFound)
+			return fmt.Errorf("link %v: %w", linkID, ErrLinkNotFound)
 		}
 		parentID, present := link.ParentLink()
 		if !present {
@@ -70,10 +70,10 @@ func (net *Net) ValidateParentReferences() error {
 		}
 		parent := net.Links[parentID]
 		if parent == nil {
-			return fmt.Errorf("link %d: parent_link_id %d: %w", link.ID, parentID, ErrLinkNotFound)
+			return fmt.Errorf("link %v: parent_link_id %v: %w", link.ID, parentID, ErrLinkNotFound)
 		}
 		if parent.ID != parentID {
-			return fmt.Errorf("link %d: parent_link_id %d resolves to link with ID %d", link.ID, parentID, parent.ID)
+			return fmt.Errorf("link %v: parent_link_id %v resolves to link with ID %v", link.ID, parentID, parent.ID)
 		}
 	}
 	return nil

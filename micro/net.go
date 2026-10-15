@@ -1,6 +1,7 @@
 package micro
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -12,54 +13,117 @@ type Net struct {
 	Nodes map[gmns.NodeID]*Node
 	Links map[gmns.LinkID]*Link
 
-	maxNodeID gmns.NodeID
-	maxLinkID gmns.LinkID
+	maxNodeID gmns.IDAllocator
+	maxLinkID gmns.IDAllocator
 }
 
 // NewNet returns pointer to the new microscopic road network
 func NewNet() *Net {
 	return &Net{
-		Nodes:     make(map[gmns.NodeID]*Node),
-		Links:     make(map[gmns.LinkID]*Link),
-		maxNodeID: 0,
-		maxLinkID: 0,
+		Nodes: make(map[gmns.NodeID]*Node),
+		Links: make(map[gmns.LinkID]*Link),
 	}
 }
 
-// MaxNodeID returns the current maximum node ID
+// NewNetWithIDType configures the kind of newly allocated node and link IDs.
+func NewNetWithIDType(kind gmns.IDType) (*Net, error) {
+	nodeIDs, err := gmns.NewIDAllocator(kind)
+	if err != nil {
+		return nil, err
+	}
+	linkIDs, err := gmns.NewIDAllocator(kind)
+	if err != nil {
+		return nil, err
+	}
+	net := NewNet()
+	net.maxNodeID = *nodeIDs
+	net.maxLinkID = *linkIDs
+	return net, nil
+}
+
+// MaxNodeID returns the next available node ID in the configured kind, not the greatest existing key.
+// Direct map insertions are checked before returning a candidate.
 func (net *Net) MaxNodeID() gmns.NodeID {
-	return net.maxNodeID
+	for {
+		candidate := net.maxNodeID.PeekNodeID()
+		if _, exists := net.Nodes[candidate]; !exists {
+			return candidate
+		}
+		net.maxNodeID.NextNodeID()
+	}
 }
 
-// MaxLinkID returns the current maximum link ID
+// MaxLinkID returns the next available link ID in the configured kind, not the greatest existing key.
 func (net *Net) MaxLinkID() gmns.LinkID {
-	return net.maxLinkID
+	for {
+		candidate := net.maxLinkID.PeekLinkID()
+		if _, exists := net.Links[candidate]; !exists {
+			return candidate
+		}
+		net.maxLinkID.NextLinkID()
+	}
 }
 
-// SetMaxNodeID sets the maximum node ID
-func (net *Net) SetMaxNodeID(id gmns.NodeID) {
-	net.maxNodeID = id
+// SetMaxNodeID sets the integer allocation counter without releasing reserved IDs.
+func (net *Net) SetMaxNodeID(id gmns.NodeID) error {
+	if id.Type() != gmns.IDTypeInteger {
+		return fmt.Errorf("node allocation counter requires an integer ID")
+	}
+	return net.maxNodeID.SetNextInteger(id.String())
 }
 
-// SetMaxLinkID sets the maximum link ID
-func (net *Net) SetMaxLinkID(id gmns.LinkID) {
-	net.maxLinkID = id
+// SetMaxLinkID sets the integer allocation counter without releasing reserved IDs.
+func (net *Net) SetMaxLinkID(id gmns.LinkID) error {
+	if id.Type() != gmns.IDTypeInteger {
+		return fmt.Errorf("link allocation counter requires an integer ID")
+	}
+	return net.maxLinkID.SetNextInteger(id.String())
 }
 
-// AddNode adds a node to the network and updates maxNodeID if necessary
-func (net *Net) AddNode(node *Node) {
+// AddNode adds a valid node without overwriting an existing record.
+func (net *Net) AddNode(node *Node) error {
+	if node == nil {
+		return ErrNodeNotFound
+	}
+	err := node.ID.Validate()
+	if err != nil {
+		return err
+	}
+	if _, exists := net.Nodes[node.ID]; exists {
+		return fmt.Errorf("node %v: %w", node.ID, gmns.ErrDuplicateID)
+	}
+	if net.Nodes == nil {
+		net.Nodes = make(map[gmns.NodeID]*Node)
+	}
+	err = net.maxNodeID.ReserveNodeID(node.ID)
+	if err != nil && !errors.Is(err, gmns.ErrDuplicateID) {
+		return err
+	}
 	net.Nodes[node.ID] = node
-	if node.ID >= net.maxNodeID {
-		net.maxNodeID = node.ID + 1
-	}
+	return nil
 }
 
-// AddLink adds a link to the network and updates maxLinkID if necessary
-func (net *Net) AddLink(link *Link) {
-	net.Links[link.ID] = link
-	if link.ID >= net.maxLinkID {
-		net.maxLinkID = link.ID + 1
+// AddLink adds a valid link without overwriting an existing record.
+func (net *Net) AddLink(link *Link) error {
+	if link == nil {
+		return ErrLinkNotFound
 	}
+	err := link.ID.Validate()
+	if err != nil {
+		return err
+	}
+	if _, exists := net.Links[link.ID]; exists {
+		return fmt.Errorf("link %v: %w", link.ID, gmns.ErrDuplicateID)
+	}
+	if net.Links == nil {
+		net.Links = make(map[gmns.LinkID]*Link)
+	}
+	err = net.maxLinkID.ReserveLinkID(link.ID)
+	if err != nil && !errors.Is(err, gmns.ErrDuplicateID) {
+		return err
+	}
+	net.Links[link.ID] = link
+	return nil
 }
 
 // DeleteNode removes a node from the network
@@ -83,12 +147,12 @@ func (net *Net) ValidateParentReferences() error {
 		nodeIDs = append(nodeIDs, nodeID)
 	}
 	sort.Slice(nodeIDs, func(first, second int) bool {
-		return nodeIDs[first] < nodeIDs[second]
+		return nodeIDs[first].Less(nodeIDs[second])
 	})
 	for _, nodeID := range nodeIDs {
 		node := net.Nodes[nodeID]
 		if node == nil {
-			return fmt.Errorf("node %d: %w", nodeID, ErrNodeNotFound)
+			return fmt.Errorf("node %v: %w", nodeID, ErrNodeNotFound)
 		}
 		parentID, present := node.ParentNode()
 		if !present {
@@ -96,10 +160,10 @@ func (net *Net) ValidateParentReferences() error {
 		}
 		parent := net.Nodes[parentID]
 		if parent == nil {
-			return fmt.Errorf("node %d: parent_node_id %d: %w", node.ID, parentID, ErrNodeNotFound)
+			return fmt.Errorf("node %v: parent_node_id %v: %w", node.ID, parentID, ErrNodeNotFound)
 		}
 		if parent.ID != parentID {
-			return fmt.Errorf("node %d: parent_node_id %d resolves to node with ID %d", node.ID, parentID, parent.ID)
+			return fmt.Errorf("node %v: parent_node_id %v resolves to node with ID %v", node.ID, parentID, parent.ID)
 		}
 	}
 
@@ -108,12 +172,12 @@ func (net *Net) ValidateParentReferences() error {
 		linkIDs = append(linkIDs, linkID)
 	}
 	sort.Slice(linkIDs, func(first, second int) bool {
-		return linkIDs[first] < linkIDs[second]
+		return linkIDs[first].Less(linkIDs[second])
 	})
 	for _, linkID := range linkIDs {
 		link := net.Links[linkID]
 		if link == nil {
-			return fmt.Errorf("link %d: %w", linkID, ErrLinkNotFound)
+			return fmt.Errorf("link %v: %w", linkID, ErrLinkNotFound)
 		}
 		parentID, present := link.ParentLink()
 		if !present {
@@ -121,10 +185,10 @@ func (net *Net) ValidateParentReferences() error {
 		}
 		parent := net.Links[parentID]
 		if parent == nil {
-			return fmt.Errorf("link %d: parent_link_id %d: %w", link.ID, parentID, ErrLinkNotFound)
+			return fmt.Errorf("link %v: parent_link_id %v: %w", link.ID, parentID, ErrLinkNotFound)
 		}
 		if parent.ID != parentID {
-			return fmt.Errorf("link %d: parent_link_id %d resolves to link with ID %d", link.ID, parentID, parent.ID)
+			return fmt.Errorf("link %v: parent_link_id %v resolves to link with ID %v", link.ID, parentID, parent.ID)
 		}
 	}
 	return nil

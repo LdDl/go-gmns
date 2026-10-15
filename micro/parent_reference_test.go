@@ -26,52 +26,54 @@ func TestParentReferencesGeoJSON(t *testing.T) {
 		{
 			name: "explicit zero IDs",
 			nodeOptions: []func(*Node){
-				WithParentNodeID(0),
+				WithParentNodeID(gmns.NodeIDFromInt64(0)),
 			},
 			linkOptions: []func(*Link){
-				WithParentLinkID(0),
+				WithParentLinkID(gmns.LinkIDFromInt64(0)),
 			},
-			hasNode: true,
-			hasLink: true,
+			parentNode: gmns.NodeIDFromInt64(0),
+			parentLink: gmns.LinkIDFromInt64(0),
+			hasNode:    true,
+			hasLink:    true,
 		},
 		{
 			name: "negative IDs are supplied values",
 			nodeOptions: []func(*Node){
-				WithParentNodeID(-1),
+				WithParentNodeID(gmns.NodeIDFromInt64(-1)),
 			},
 			linkOptions: []func(*Link){
-				WithParentLinkID(-1),
+				WithParentLinkID(gmns.LinkIDFromInt64(-1)),
 			},
-			parentNode: -1,
-			parentLink: -1,
+			parentNode: gmns.NodeIDFromInt64(-1),
+			parentLink: gmns.LinkIDFromInt64(-1),
 			hasNode:    true,
 			hasLink:    true,
 		},
 		{
 			name: "node reference only",
 			nodeOptions: []func(*Node){
-				WithParentNodeID(41),
+				WithParentNodeID(gmns.NodeIDFromInt64(41)),
 			},
-			parentNode: 41,
+			parentNode: gmns.NodeIDFromInt64(41),
 			hasNode:    true,
 		},
 		{
 			name: "link reference only",
 			linkOptions: []func(*Link){
-				WithParentLinkID(52),
+				WithParentLinkID(gmns.LinkIDFromInt64(52)),
 			},
-			parentLink: 52,
+			parentLink: gmns.LinkIDFromInt64(52),
 			hasLink:    true,
 		},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			node := NewNodeFrom(1, testCase.nodeOptions...)
-			link := NewLinkFrom(2, 1, 3, testCase.linkOptions...)
-			WithNodeMesoLinkID(101)(node)
-			WithMesoLinkID(201)(link)
-			WithMacroLinkID(202)(link)
-			WithMacroNodeID(203)(link)
+			node := NewNodeFrom(gmns.NodeIDFromInt64(1), testCase.nodeOptions...)
+			link := NewLinkFrom(gmns.LinkIDFromInt64(2), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(3), testCase.linkOptions...)
+			WithNodeMesoLinkID(gmns.LinkIDFromInt64(101))(node)
+			WithMesoLinkID(gmns.LinkIDFromInt64(201))(link)
+			WithMacroLinkID(gmns.LinkIDFromInt64(202))(link)
+			WithMacroNodeID(gmns.NodeIDFromInt64(203))(link)
 			nodeData, err := node.GeoFeature().MarshalJSON()
 			assert.NoError(t, err)
 			if err != nil {
@@ -97,12 +99,16 @@ func TestParentReferencesGeoJSON(t *testing.T) {
 			assert.True(t, nodePropertyExists)
 			assert.True(t, linkPropertyExists)
 			if testCase.hasNode {
-				assert.Equal(t, float64(testCase.parentNode), nodeValue)
+				integer, isInteger := testCase.parentNode.Int64()
+				assert.True(t, isInteger)
+				assert.Equal(t, float64(integer), nodeValue)
 			} else {
 				assert.Nil(t, nodeValue)
 			}
 			if testCase.hasLink {
-				assert.Equal(t, float64(testCase.parentLink), linkValue)
+				integer, isInteger := testCase.parentLink.Int64()
+				assert.True(t, isInteger)
+				assert.Equal(t, float64(integer), linkValue)
 			} else {
 				assert.Nil(t, linkValue)
 			}
@@ -112,10 +118,10 @@ func TestParentReferencesGeoJSON(t *testing.T) {
 			assert.Equal(t, testCase.parentLink, parentLink)
 			assert.Equal(t, testCase.hasNode, hasNode)
 			assert.Equal(t, testCase.hasLink, hasLink)
-			assert.Equal(t, gmns.NodeID(1), node.ID)
-			assert.Equal(t, gmns.LinkID(2), link.ID)
-			assert.Equal(t, gmns.NodeID(1), link.SourceNode())
-			assert.Equal(t, gmns.NodeID(3), link.TargetNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(1), node.ID)
+			assert.Equal(t, gmns.LinkIDFromInt64(2), link.ID)
+			assert.Equal(t, gmns.NodeIDFromInt64(1), link.SourceNode())
+			assert.Equal(t, gmns.NodeIDFromInt64(3), link.TargetNode())
 			assert.Equal(t, float64(101), nodeFeature.Properties["meso_link_id"])
 			assert.Equal(t, float64(201), linkFeature.Properties["meso_link_id"])
 			assert.Equal(t, float64(202), linkFeature.Properties["macro_link_id"])

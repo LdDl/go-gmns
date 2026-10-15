@@ -3,6 +3,7 @@ package micro
 import (
 	"testing"
 
+	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/gmns/types"
 	"github.com/paulmach/orb/geojson"
 	"github.com/stretchr/testify/assert"
@@ -57,8 +58,8 @@ func TestTextAttributesGeoJSON(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			node := NewNodeFrom(1)
-			link := NewLinkFrom(2, 1, 3)
+			node := NewNodeFrom(gmns.NodeIDFromInt64(1))
+			link := NewLinkFrom(gmns.LinkIDFromInt64(2), gmns.NodeIDFromInt64(1), gmns.NodeIDFromInt64(3))
 			if testCase.set {
 				WithNodeName(testCase.nodeName)(node)
 				WithNodeType(testCase.nodeType)(node)
