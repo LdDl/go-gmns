@@ -8,6 +8,15 @@ import (
 )
 
 type Node struct {
+	controlType types.ControlType
+
+	altitudeMeters *float64
+
+	parentNodeID *gmns.NodeID
+
+	name     string
+	nodeType string
+
 	ID gmns.NodeID
 
 	geom          orb.Point
@@ -16,7 +25,8 @@ type Node struct {
 	macroNodeID gmns.NodeID
 	macroLinkID gmns.LinkID
 
-	macroZoneID      gmns.NodeID        // Should be inherited from the macroscopic node
+	// Should be inherited from the macroscopic node
+	macroZoneID      *gmns.NodeID
 	activityLinkType types.LinkType     // Should be inherited from the macroscopic node
 	boundaryType     types.BoundaryType // Should be evaluated from macroscopic node and macroscopic link
 
@@ -30,9 +40,8 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:               id,
 		geom:             orb.Point{},
 		geomEuclidean:    orb.Point{},
-		macroNodeID:      -1,
-		macroLinkID:      -1,
-		macroZoneID:      -1,
+		macroNodeID:      gmns.NodeID{},
+		macroLinkID:      gmns.LinkID{},
 		activityLinkType: types.LINK_UNDEFINED,
 		boundaryType:     types.BOUNDARY_NONE,
 		incomingLinks:    orderedmap.NewOrderedMap(),
@@ -42,6 +51,23 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		option(newNode)
 	}
 	return newNode
+}
+
+// AltitudeMeters returns the supplied altitude in meters and whether it is set.
+func (node *Node) AltitudeMeters() (float64, bool) {
+	if node.altitudeMeters == nil {
+		return 0, false
+	}
+	return *node.altitudeMeters, true
+}
+
+// WithAltitudeMeters stores altitude independently of the two-dimensional geometry.
+// Zero and negative altitudes are supplied values, not absence.
+func WithAltitudeMeters(altitudeMeters float64) func(*Node) {
+	return func(node *Node) {
+		value := altitudeMeters
+		node.altitudeMeters = &value
+	}
 }
 
 // Geom returns corresponding geometry [WGS84]
@@ -54,19 +80,22 @@ func (node *Node) GeomEuclidean() orb.Point {
 	return node.geomEuclidean
 }
 
-// MacroNode returns identifier of parent macroscopic node. Outputs "-1" if it was not set.
+// MacroNode returns identifier of parent macroscopic node. Returns a zero ID when absent.
 func (node *Node) MacroNode() gmns.NodeID {
 	return node.macroNodeID
 }
 
-// MacroLink returns identifier of parent macroscopic link. Outputs "-1" if it was not set.
+// MacroLink returns identifier of parent macroscopic link. Returns a zero ID when absent.
 func (node *Node) MacroLink() gmns.LinkID {
 	return node.macroLinkID
 }
 
-// MacroZone returns parent macroscopic node's zone indetifier. Outputs "-1" if it was not set.
-func (node *Node) MacroZone() gmns.NodeID {
-	return node.macroZoneID
+// MacroZone returns the supplied zone identifier and whether it is set.
+func (node *Node) MacroZone() (gmns.NodeID, bool) {
+	if node.macroZoneID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.macroZoneID, true
 }
 
 // ActivityLinkType returns node activity link type (based on Link information)
@@ -120,7 +149,8 @@ func WithPointMacroLinkID(macroLinkID gmns.LinkID) func(*Node) {
 // WithMacroZone sets parent macroscopic node's zone indetifier
 func WithMacroZone(macroZoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.macroZoneID = macroZoneID
+		value := macroZoneID
+		node.macroZoneID = &value
 	}
 }
 
@@ -153,5 +183,80 @@ func WithOutcomingLinks(linksIDs ...gmns.LinkID) func(*Node) {
 		for i := range linksIDs {
 			node.outcomingLinks.Set(linksIDs[i], struct{}{})
 		}
+	}
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
+	}
+}
+
+// Name returns the supplied node name, or an empty string when not supplied.
+func (node *Node) Name() string {
+	return node.name
+}
+
+// WithNodeName sets the node name; an empty string clears the value.
+func WithNodeName(name string) func(*Node) {
+	return func(node *Node) {
+		node.name = name
+	}
+}
+
+// ParentNode returns the optional associated node ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (node *Node) ParentNode() (gmns.NodeID, bool) {
+	if node.parentNodeID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.parentNodeID, true
+}
+
+// WithParentNodeID sets an associated node reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
+	return func(node *Node) {
+		value := parentNodeID
+		node.parentNodeID = &value
+	}
+}
+
+// ControlType returns the supplied control category, or empty if absent.
+func (node *Node) ControlType() types.ControlType {
+	return node.controlType
+}
+
+// WithNodeControlType stores or clears a supplied control category.
+func WithNodeControlType(controlType types.ControlType) func(*Node) {
+	return func(node *Node) {
+		node.controlType = controlType
+	}
+}
+
+// WithoutAltitudeMeters clears the supplied value, restoring absence.
+func WithoutAltitudeMeters() func(*Node) {
+	return func(node *Node) {
+		node.altitudeMeters = nil
+	}
+}
+
+// WithoutParentNodeID clears the supplied value, restoring absence.
+func WithoutParentNodeID() func(*Node) {
+	return func(node *Node) {
+		node.parentNodeID = nil
+	}
+}
+
+// WithoutMacroZone clears the supplied value, restoring absence.
+func WithoutMacroZone() func(*Node) {
+	return func(node *Node) {
+		node.macroZoneID = nil
 	}
 }

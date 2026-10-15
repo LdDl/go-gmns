@@ -66,6 +66,40 @@ type macroLinkProcessing struct {
 }
 
 func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
+	err := requireDirectedMacroLinks(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = requireMacroLinkLengths(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = requireMacroLaneData(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = macroNet.ValidateMovements(movements)
+	if err != nil {
+		return nil, err
+	}
+	kind, err := macroIdentifierType(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = movements.ValidateIDType(kind)
+	if err != nil {
+		return nil, err
+	}
+	err = requireSupportedMacroDataset(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	for _, mvmt := range movements {
+		if mvmt.AllowedUses() != "" {
+			return nil, fmt.Errorf("%w: authored movement allowed_uses mapping is not implemented", ErrUnsupportedGenerationInput)
+		}
+	}
+
 	if VERBOSE {
 		log.Info().Str("scope", "gen_meso").Msg("Preparing mesoscopic network")
 	}
@@ -126,7 +160,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		macroLinkProcess := needToObserve[macroLinkID]
 		macroLink, ok := macroNet.Links[macroLinkID]
 		if !ok {
-			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %d", macroLinkID)
+			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %v", macroLinkID)
 		}
 		if !macroLinkProcess.needsOffset {
 			macroLinkProcess.offsetGeomEuclidean = macroLink.GeomEuclidean().Clone()
@@ -144,10 +178,15 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		macroLinkProcess.lengthMetersOffset = math.Round(geo.LengthHaversine(macroLinkProcess.offsetGeom)*100.0) / 100.0
 		macroLink, ok := macroNet.Links[macroLinkID]
 		if !ok {
-			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %d", macroLinkID)
+			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %v", macroLinkID)
 		}
-		for i, item := range macroLinkProcess.lanesInfo.LanesChangePoints {
-			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / macroLink.LengthMeters()) * macroLinkProcess.lengthMetersOffset
+		// Keep rescaled breakpoints separate from the source link's slice.
+		sourceChangePoints := macroLinkProcess.lanesInfo.LanesChangePoints
+		// Required source lengths were validated before geometry preparation.
+		lengthMeters, _ := macroLink.LengthMeters()
+		macroLinkProcess.lanesInfo.LanesChangePoints = make([]float64, len(sourceChangePoints))
+		for i, item := range sourceChangePoints {
+			macroLinkProcess.lanesInfo.LanesChangePoints[i] = (item / lengthMeters) * macroLinkProcess.lengthMetersOffset
 		}
 	}
 	if VERBOSE {
@@ -161,13 +200,13 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		sortedMovementIDs = append(sortedMovementIDs, mvmtID)
 	}
 	sort.Slice(sortedMovementIDs, func(i, j int) bool {
-		return sortedMovementIDs[i] < sortedMovementIDs[j]
+		return sortedMovementIDs[i].Less(sortedMovementIDs[j])
 	})
 	for _, mvmtID := range sortedMovementIDs {
 		mvmt := movements[mvmtID]
-		macroNodeID := mvmt.MacroNode()
+		macroNodeID := mvmt.Node()
 		if _, ok := macroNet.Nodes[macroNodeID]; !ok {
-			return nil, errors.Wrapf(macro.ErrNodeNotFound, "Agg movements; Node ID: %d", macroNodeID)
+			return nil, errors.Wrapf(macro.ErrNodeNotFound, "Agg movements; Node ID: %v", macroNodeID)
 		}
 		if _, ok := macroNodesMovements[macroNodeID]; !ok {
 			macroNodesMovements[macroNodeID] = make([]*movement.Movement, 0, 1)
@@ -187,7 +226,8 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 
 	for _, nodeID := range sortedMacroNodeIDsMain {
 		macroNode := macroNet.Nodes[nodeID]
-		if macroNode.ControlType() == types.CONTROL_TYPE_IS_SIGNAL {
+		// Preserve explicit junctions with signals, stop or yield control.
+		if macroNode.ControlType().HasControl() {
 			continue
 		}
 		incomingMacroLinks := macroNode.IncomingLinks()
@@ -197,14 +237,14 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			incomingMacroLinkID := incomingMacroLinks[0]
 			incomingMacroLink, ok := macroNet.Links[incomingMacroLinkID]
 			if !ok {
-				return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 1: Incoming link ID: %d for macroscopic node %d", incomingMacroLinkID, macroNode.ID)
+				return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 1: Incoming link ID: %v for macroscopic node %v", incomingMacroLinkID, macroNode.ID)
 			}
 			badAngle := true
 			for j := range outcomingMacroLinks {
 				outcomingMacroLinkID := outcomingMacroLinks[j]
 				outcomingMacroLink, ok := macroNet.Links[outcomingMacroLinkID]
 				if !ok {
-					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 1: Outcoming link ID: %d for macroscopic node %d", outcomingMacroLinkID, macroNode.ID)
+					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 1: Outcoming link ID: %v for macroscopic node %v", outcomingMacroLinkID, macroNode.ID)
 				}
 				angle := geomath.AngleBetweenLines(incomingMacroLink.GeomEuclidean(), outcomingMacroLink.GeomEuclidean())
 				if angle > 0.75*math.Pi || angle < -0.75*math.Pi {
@@ -221,7 +261,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if ok {
 				for j := range macroNodeMvmts {
 					mvmt := macroNodeMvmts[j]
-					outcomeMacroLinkID := mvmt.OutcomeMacroLink()
+					outcomeMacroLinkID := mvmt.OutcomeLink()
 					if _, ok := outcomingMacroLinksObserved[outcomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break
@@ -243,7 +283,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 				outcomingMacroLinkID := outcomingMacroLinks[j]
 				outcomingMacroLink, ok := needToObserve[outcomingMacroLinkID]
 				if !ok {
-					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Nested outcoming link ID: %d for macroscopic node %d", outcomingMacroLinkID, macroNode.ID)
+					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Nested outcoming link ID: %v for macroscopic node %v", outcomingMacroLinkID, macroNode.ID)
 				}
 				outcomingMacroLink.upstreamShortCut = true
 			}
@@ -252,14 +292,14 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			outcomingMacroLinkID := outcomingMacroLinks[0]
 			outcomingMacroLink, ok := macroNet.Links[outcomingMacroLinkID]
 			if !ok {
-				return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 2: Outcoming link ID: %d for macroscopic node %d", outcomingMacroLinkID, macroNode.ID)
+				return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 2: Outcoming link ID: %v for macroscopic node %v", outcomingMacroLinkID, macroNode.ID)
 			}
 			badAngle := true
 			for j := range incomingMacroLinks {
 				incomingMacroLinkID := incomingMacroLinks[j]
 				incomingMacroLink, ok := macroNet.Links[incomingMacroLinkID]
 				if !ok {
-					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 2: Incoming link ID: %d for macroscopic node %d", incomingMacroLinkID, macroNode.ID)
+					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Case 2: Incoming link ID: %v for macroscopic node %v", incomingMacroLinkID, macroNode.ID)
 				}
 				angle := geomath.AngleBetweenLines(incomingMacroLink.GeomEuclidean(), outcomingMacroLink.GeomEuclidean())
 				if angle > 0.75*math.Pi || angle < -0.75*math.Pi {
@@ -276,7 +316,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			if ok {
 				for j := range macroNodeMvmts {
 					mvmt := macroNodeMvmts[j]
-					incomeMacroLinkID := mvmt.IncomeMacroLink()
+					incomeMacroLinkID := mvmt.IncomeLink()
 					if _, ok := outcomingMacroLinksObserved[incomeMacroLinkID]; ok {
 						hasMultipleConnections = true
 						break
@@ -298,7 +338,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 				incomingMacroLinkID := incomingMacroLinks[j]
 				incomingMacroLink, ok := needToObserve[incomingMacroLinkID]
 				if !ok {
-					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Nested incoming link ID: %d for macroscopic node %d", incomingMacroLinkID, macroNode.ID)
+					return nil, errors.Wrapf(macro.ErrLinkNotFound, "Nested incoming link ID: %v for macroscopic node %v", incomingMacroLinkID, macroNode.ID)
 				}
 				incomingMacroLink.downstreamShortCut = true
 			}
@@ -319,7 +359,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	}
 	st = time.Now()
 
-	mesoNodes, mesoLinks, err := generateBaseNodesLinks(macroNet.Nodes, needToObserve)
+	mesoNodes, mesoLinks, err := generateBaseNodesLinks(macroNet.Nodes, needToObserve, kind)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't generate base mesoscopic nodes and links")
 	}
@@ -328,7 +368,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	}
 	st = time.Now()
 
-	err = connectMesoscopicLinks(mesoLinks, mesoNodes, macroNet.Nodes, macroNet.Links, needToObserve, macroNodesMovements, macroNodesNeedMovement)
+	err = connectMesoscopicLinks(mesoLinks, mesoNodes, macroNet.Nodes, macroNet.Links, needToObserve, macroNodesMovements, macroNodesNeedMovement, kind)
 	if err != nil {
 		return nil, errors.Wrap(err, "Can't prepare connections between mesoscopic links")
 	}
@@ -358,6 +398,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		Nodes: mesoNodes,
 		Links: mesoLinks,
 	}
+	err = copyMacroCatalogs(macroNet, &mesoNet)
+	if err != nil {
+		return nil, err
+	}
 	return &mesoNet, nil
 }
 
@@ -368,7 +412,7 @@ func macroLinksToSlice(links map[gmns.LinkID]*macro.Link) []*macro.Link {
 	}
 	// Sort by ID for deterministic iteration order
 	sort.Slice(ans, func(i, j int) bool {
-		return ans[i].ID < ans[j].ID
+		return ans[i].ID.Less(ans[j].ID)
 	})
 	return ans
 }
@@ -380,7 +424,7 @@ func sortedLinkIDs(m map[gmns.LinkID]*macroLinkProcessing) []gmns.LinkID {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+		return keys[i].Less(keys[j])
 	})
 	return keys
 }
@@ -392,7 +436,7 @@ func sortedMacroNodeIDs(m map[gmns.NodeID]*macro.Node) []gmns.NodeID {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+		return keys[i].Less(keys[j])
 	})
 	return keys
 }
@@ -404,7 +448,7 @@ func sortedMesoNodeIDs(m map[gmns.NodeID]*meso.Node) []gmns.NodeID {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+		return keys[i].Less(keys[j])
 	})
 	return keys
 }
@@ -416,7 +460,7 @@ func sortedMesoLinkIDs(m map[gmns.LinkID]*meso.Link) []gmns.LinkID {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+		return keys[i].Less(keys[j])
 	})
 	return keys
 }
@@ -428,7 +472,7 @@ func sortedLinkIDsGeneric(m map[gmns.LinkID]struct{}) []gmns.LinkID {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
+		return keys[i].Less(keys[j])
 	})
 	return keys
 }
@@ -557,9 +601,15 @@ func (macroLinkProcess *macroLinkProcessing) performCut() {
 	}
 }
 
-func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksProcessed map[gmns.LinkID]*macroLinkProcessing) (map[gmns.NodeID]*meso.Node, map[gmns.LinkID]*meso.Link, error) {
-	lastMesoLinkID := gmns.LinkID(0)
-	expandedMesoNodes := make(map[gmns.NodeID]int)
+func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksProcessed map[gmns.LinkID]*macroLinkProcessing, kind gmns.IDType) (map[gmns.NodeID]*meso.Node, map[gmns.LinkID]*meso.Link, error) {
+	nodeIDs, err := gmns.NewIDAllocator(kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	linkIDs, err := gmns.NewIDAllocator(kind)
+	if err != nil {
+		return nil, nil, err
+	}
 	collectedMesoNodes := make(map[gmns.NodeID]*meso.Node)
 	collectedMesoLinks := make(map[gmns.LinkID]*meso.Link)
 	// Sort keys for deterministic iteration
@@ -571,27 +621,25 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 		var upstreamMesoNode *meso.Node
 		sourceMacroNode, ok := macroNodes[macroLinkProcess.sourceMacroNodeID]
 		if !ok {
-			return nil, nil, errors.Wrapf(macro.ErrNodeNotFound, "Source node ID: %d", macroLinkProcess.sourceMacroNodeID)
+			return nil, nil, errors.Wrapf(macro.ErrNodeNotFound, "Source node ID: %v", macroLinkProcess.sourceMacroNodeID)
 		}
 		if sourceMacroNode.IsCentroid() {
 			// @todo: handle centroids
 			return nil, nil, errors.Wrap(ErrNotImplementedYet, "Prepare upstream mesoscopic node from centroid")
 		} else {
-			expNodesNum, ok := expandedMesoNodes[macroLinkProcess.sourceMacroNodeID]
-			if !ok {
-				expandedMesoNodes[macroLinkProcess.sourceMacroNodeID] = 0
-			}
-			expandedMesoNodes[macroLinkProcess.sourceMacroNodeID] += 1
 			upstreamMesoNode = meso.NewNodeFrom(
-				macroLinkProcess.sourceMacroNodeID*100+gmns.NodeID(expNodesNum),
+				nodeIDs.NextNodeID(),
 				meso.WithPointGeom(macroLinkProcess.offsetGeomCut[0][0]), // No explicit copy or clone method since Point is not slice, but array
 				meso.WithPointEuclideanGeom(macroLinkProcess.offsetGeomEuclideanCut[0][0]),
 				meso.WithPointMacroNodeID(macroLinkProcess.sourceMacroNodeID),
-				meso.WithPointMacroLinkID(-1),
-				meso.WithMacroZone(sourceMacroNode.Zone()),
+				meso.WithPointMacroLinkID(gmns.LinkID{}),
 				meso.WithActivityLinkType(sourceMacroNode.ActivityLinkType()),
 				meso.WithBoundaryType(types.BOUNDARY_NONE),
 			)
+			zoneID, hasZone := sourceMacroNode.Zone()
+			if hasZone {
+				meso.WithMacroZone(zoneID)(upstreamMesoNode)
+			}
 			collectedMesoNodes[upstreamMesoNode.ID] = upstreamMesoNode
 		}
 
@@ -599,7 +647,7 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 		var downstreamMesoNode *meso.Node
 		targetMacroNode, ok := macroNodes[macroLinkProcess.targetMacroNodeID]
 		if !ok {
-			return nil, nil, errors.Wrapf(macro.ErrNodeNotFound, "Target node ID: %d", macroLinkProcess.targetMacroNodeID)
+			return nil, nil, errors.Wrapf(macro.ErrNodeNotFound, "Target node ID: %v", macroLinkProcess.targetMacroNodeID)
 		}
 		segmentsToCut := len(macroLinkProcess.lanesInfoCut.LanesList)
 		upstreamMesoNodeID := upstreamMesoNode.ID
@@ -608,34 +656,33 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 			if targetMacroNode.IsCentroid() && segmentIdx == segmentsToCut-1 {
 				return nil, nil, errors.Wrap(ErrNotImplementedYet, "Prepare downstream mesoscopic node from centroid")
 			} else {
-				expNodesNum, ok := expandedMesoNodes[macroLinkProcess.targetMacroNodeID]
-				if !ok {
-					expandedMesoNodes[macroLinkProcess.targetMacroNodeID] = 0
-				}
-				expandedMesoNodes[macroLinkProcess.targetMacroNodeID] += 1
-				macroNodeID := gmns.NodeID(-1)
+				macroNodeID := gmns.NodeID{}
 				macroLinkID := macroLinkProcess.id
-				zoneID := gmns.NodeID(-1)
+				var zoneID gmns.NodeID
+				hasZone := false
 				activityLinkType := types.LINK_UNDEFINED
 				if segmentIdx == segmentsToCut-1 {
 					macroNodeID = macroLinkProcess.targetMacroNodeID
-					macroLinkID = gmns.LinkID(-1)
-					zoneID = targetMacroNode.Zone()
+					macroLinkID = gmns.LinkID{}
+					zoneID, hasZone = targetMacroNode.Zone()
 					activityLinkType = targetMacroNode.ActivityLinkType()
 				}
 				downstreamMesoNode = meso.NewNodeFrom(
-					macroLinkProcess.targetMacroNodeID*100+gmns.NodeID(expNodesNum),
+					nodeIDs.NextNodeID(),
 					meso.WithPointGeom(macroLinkProcess.offsetGeomCut[segmentIdx][len(macroLinkProcess.offsetGeomCut[segmentIdx])-1]), // No explicit copy or clone method since Point is not slice, but array
 					meso.WithPointEuclideanGeom(macroLinkProcess.offsetGeomEuclideanCut[segmentIdx][len(macroLinkProcess.offsetGeomEuclideanCut[segmentIdx])-1]),
 					meso.WithPointMacroNodeID(macroNodeID),
 					meso.WithPointMacroLinkID(macroLinkID),
-					meso.WithMacroZone(zoneID),
 					meso.WithActivityLinkType(activityLinkType),
 					meso.WithBoundaryType(types.BOUNDARY_NONE),
 				)
+				if hasZone {
+					meso.WithMacroZone(zoneID)(downstreamMesoNode)
+				}
 				collectedMesoNodes[downstreamMesoNode.ID] = downstreamMesoNode
 			}
 
+			lastMesoLinkID := linkIDs.NextLinkID()
 			mesoLink := meso.NewLinkFrom(
 				lastMesoLinkID,
 				upstreamMesoNodeID,
@@ -646,8 +693,8 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 				meso.WithLineGeomEuclidean(macroLinkProcess.offsetGeomEuclideanCut[segmentIdx].Clone()),
 				meso.WithLineMacroLinkID(macroLinkProcess.id),
 				meso.WithSegmentIdx(segmentIdx),
-				meso.WithMovementID(-1),
-				meso.WithLineMacroNodeID(-1),
+				meso.WithMovementID(gmns.MovementID{}),
+				meso.WithLineMacroNodeID(gmns.NodeID{}),
 				meso.WithLengthMeters(geo.LengthHaversine(macroLinkProcess.offsetGeomCut[segmentIdx])),
 			)
 			meso.WithOutcomingLinks(lastMesoLinkID)(collectedMesoNodes[upstreamMesoNodeID])
@@ -655,7 +702,6 @@ func generateBaseNodesLinks(macroNodes map[gmns.NodeID]*macro.Node, macroLinksPr
 
 			// Prepare mesoscopic link
 			collectedMesoLinks[mesoLink.ID] = mesoLink
-			lastMesoLinkID += 1
 			upstreamMesoNodeID = downstreamMesoNode.ID // This must be done since current upstream node is downstream node for next segment
 		}
 	}
@@ -670,16 +716,18 @@ func connectMesoscopicLinks(
 	macroLinksProcessed map[gmns.LinkID]*macroLinkProcessing,
 	macroNodesMovements map[gmns.NodeID][]*movement.Movement,
 	macroNodesNeedMovement map[gmns.NodeID]bool,
+	kind gmns.IDType,
 ) error {
-	lastMesoLinkID := gmns.LinkID(0)
-
-	// Find max ID (for further links creating)
-	for _, mesoLink := range mesoLinks {
-		if mesoLink.ID > lastMesoLinkID {
-			lastMesoLinkID = mesoLink.ID
+	linkIDs, err := gmns.NewIDAllocator(kind)
+	if err != nil {
+		return err
+	}
+	for linkID := range mesoLinks {
+		err := linkIDs.ReserveLinkID(linkID)
+		if err != nil {
+			return err
 		}
 	}
-	lastMesoLinkID++
 
 	// Collect mesoscopic links for parent macroscopic links
 	macroLinkMesoLinks := make(map[gmns.LinkID][]*meso.Link)
@@ -709,24 +757,24 @@ func connectMesoscopicLinks(
 		}
 		for j := range macroNodeMvmts {
 			mvmt := macroNodeMvmts[j]
-			incomeMacroLinkID := mvmt.IncomeMacroLink()
-			outcomeMacroLinkID := mvmt.OutcomeMacroLink()
+			incomeMacroLinkID := mvmt.IncomeLink()
+			outcomeMacroLinkID := mvmt.OutcomeLink()
 			incomingMacroLink, ok := macroLinks[incomeMacroLinkID]
 			if !ok {
-				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macro link for further connection: %d", incomeMacroLinkID)
+				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macro link for further connection: %v", incomeMacroLinkID)
 			}
 			outcomingMacroLink, ok := macroLinks[outcomeMacroLinkID]
 			if !ok {
-				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macro link for further connection: %d", outcomeMacroLinkID)
+				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macro link for further connection: %v", outcomeMacroLinkID)
 			}
 
 			incomingMacroLinkProcessed, ok := macroLinksProcessed[incomeMacroLinkID]
 			if !ok {
-				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find processed macro link for further connection: %d", incomeMacroLinkID)
+				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find processed macro link for further connection: %v", incomeMacroLinkID)
 			}
 			outcomingMacroLinkProcessed, ok := macroLinksProcessed[outcomeMacroLinkID]
 			if !ok {
-				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find processed macro link for further connection: %d", outcomeMacroLinkID)
+				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find processed macro link for further connection: %v", outcomeMacroLinkID)
 			}
 
 			incomingMesolinks := macroLinkMesoLinks[incomingMacroLink.ID]
@@ -748,6 +796,7 @@ func connectMesoscopicLinks(
 			geom := orb.LineString{incomingMesoLinkGeom[len(incomingMesoLinkGeom)-1], outcomingMesoLinkGeom[0]}
 			geomEuclidean := orb.LineString{incomingMesoLinkGeomEuclidean[len(incomingMesoLinkGeomEuclidean)-1], outcomingMesoLinkGeomEuclidean[0]}
 			if macroNodesNeedMovement[macroNodeID] {
+				lastMesoLinkID := linkIDs.NextLinkID()
 				sourceMesoNodeID := incomingMesoLink.TargetNode()
 				targetMesoNodeID := outcomingMesoLink.SourceNode()
 				mesoLink := meso.NewLinkFrom(
@@ -757,7 +806,7 @@ func connectMesoscopicLinks(
 					meso.WithLanesNum(mvmt.LanesNum()),
 					meso.WithLineGeom(geom),
 					meso.WithLineGeomEuclidean(geomEuclidean),
-					meso.WithLineMacroLinkID(-1),
+					meso.WithLineMacroLinkID(gmns.LinkID{}),
 					meso.WithIsConnection(true),
 					meso.WithMovementID(mvmt.ID),
 					meso.WithLineMacroNodeID(macroNodeID),
@@ -772,7 +821,6 @@ func connectMesoscopicLinks(
 				meso.WithIncomingLinks(lastMesoLinkID)(mesoNodes[targetMesoNodeID])
 				// Prepare mesoscopic link
 				mesoLinks[mesoLink.ID] = mesoLink
-				lastMesoLinkID += 1
 			} else {
 				if incomingMacroLinkProcessed.downstreamIsTarget && !outcomingMacroLinkProcessed.upstreamIsTarget {
 					// remove incoming micro nodes and links of outcomingMesoLink, then connect to incomingMesoLink
@@ -803,16 +851,23 @@ func updateBoundaryType(mesoNodes map[gmns.NodeID]*meso.Node, macroNodes map[gmn
 	for i := range mesoNodes {
 		mesoNode := mesoNodes[i]
 		macroNodeID := mesoNode.MacroNode()
-		if macroNodeID < 0 && mesoNode.MacroLink() < 0 {
-			return errors.Wrapf(ErrBadParentInfo, "Neither macroscopic link nor node for meso node: %d", mesoNode.ID)
+		if macroNodeID.IsZero() && mesoNode.MacroLink().IsZero() {
+			return errors.Wrapf(ErrBadParentInfo, "Neither macroscopic link nor node for meso node: %v", mesoNode.ID)
 		}
-		if mesoNode.MacroNode() < 0 {
+		if mesoNode.MacroNode().IsZero() {
 			meso.WithBoundaryType(types.BOUNDARY_NONE)(mesoNode)
 			continue
 		}
 		macroNode, ok := macroNodes[macroNodeID]
 		if !ok {
-			return errors.Wrapf(macro.ErrNodeNotFound, "Can't find macroscopic node with id %d for mesoscopic node %d", macroNodeID, mesoNode.ID)
+			return errors.Wrapf(macro.ErrNodeNotFound, "Can't find macroscopic node with id %v for mesoscopic node %v", macroNodeID, mesoNode.ID)
+		}
+		meso.WithNodeName(macroNode.Name())(mesoNode)
+		meso.WithNodeType(macroNode.NodeType())(mesoNode)
+		meso.WithNodeControlType(macroNode.ControlType())(mesoNode)
+		altitude, present := macroNode.AltitudeMeters()
+		if present {
+			meso.WithAltitudeMeters(altitude)(mesoNode)
 		}
 		macroNodeBoundaryType := macroNode.BoundaryType()
 		if macroNodeBoundaryType != types.BOUNDARY_INCOME_OUTCOME {
@@ -841,19 +896,26 @@ func updateLinksProperties(
 		macroNodeID := mesoLink.MacroNode()
 		macroLinkID := mesoLink.MacroLink()
 
-		if macroNodeID < 0 && macroLinkID < 0 {
-			return errors.Wrapf(ErrBadParentInfo, "Neither macroscopic link nor node for mesoscopic link: %d", mesoLink.ID)
+		if macroNodeID.IsZero() && macroLinkID.IsZero() {
+			return errors.Wrapf(ErrBadParentInfo, "Neither macroscopic link nor node for mesoscopic link: %v", mesoLink.ID)
 		}
 
-		if mesoLink.MacroNode() < 0 {
+		if mesoLink.MacroNode().IsZero() {
 			// Inherit macroscopic link properties
 			macroLink, ok := macroLinks[macroLinkID]
 			if !ok {
-				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macroscopic link with id %d for mesoscopic link %d", macroLinkID, mesoLink.ID)
+				return errors.Wrapf(macro.ErrLinkNotFound, "Can't find macroscopic link with id %v for mesoscopic link %v", macroLinkID, mesoLink.ID)
 			}
+			copyMacroRoadAttributes(macroLink, mesoLink)
 			meso.WithLinkType(macroLink.LinkType())(mesoLink)
-			meso.WithFreeSpeed(macroLink.FreeSpeed())(mesoLink)
-			meso.WithCapacity(macroLink.Capacity())(mesoLink)
+			freeSpeed, hasFreeSpeed := macroLink.FreeSpeed()
+			if hasFreeSpeed {
+				meso.WithFreeSpeed(freeSpeed)(mesoLink)
+			}
+			capacity, hasCapacity := macroLink.Capacity()
+			if hasCapacity {
+				meso.WithCapacity(capacity)(mesoLink)
+			}
 			meso.WithAllowedAgentTypes(macroLink.AllowedAgentTypes())(mesoLink)
 			// Reset contrl type property to default
 			meso.WithControlType(types.CONTROL_TYPE_NOT_SIGNAL)(mesoLink)
@@ -865,17 +927,17 @@ func updateLinksProperties(
 		// Inherit macroscopic node properties
 		macroNode, ok := macroNodes[macroNodeID]
 		if !ok {
-			return errors.Wrapf(macro.ErrNodeNotFound, "Can't find macroscopic node with id %d for mesoscopic link %d", macroNodeID, mesoLink.ID)
+			return errors.Wrapf(macro.ErrNodeNotFound, "Can't find macroscopic node with id %v for mesoscopic link %v", macroNodeID, mesoLink.ID)
 		}
 		meso.WithControlType(macroNode.ControlType())(mesoLink)
 
 		movementID := mesoLink.Movement()
-		if movementID < 0 {
-			return errors.Wrapf(ErrBadParentInfo, "Should have movement ID for mesoscopic link: %d", mesoLink.ID)
+		if movementID.IsZero() {
+			return errors.Wrapf(ErrBadParentInfo, "Should have movement ID for mesoscopic link: %v", mesoLink.ID)
 		}
 		mvmt, ok := movements[movementID]
 		if !ok {
-			return errors.Wrapf(movement.ErrMvmtNotFound, "Can't find movement with ID %d for mesoscopic link %d", movementID, mesoLink.ID)
+			return errors.Wrapf(movement.ErrMvmtNotFound, "Can't find movement with ID %v for mesoscopic link %v", movementID, mesoLink.ID)
 		}
 		meso.WithMovementCompositeType(mvmt.MvmtTextID())(mesoLink)
 	}
@@ -884,12 +946,12 @@ func updateLinksProperties(
 	for mesoLinkID := range movementMesoLinks {
 		mesoLink, ok := mesoLinks[mesoLinkID]
 		if !ok {
-			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find mesoscopic link %d while processing movement links", mesoLinkID)
+			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find mesoscopic link %v while processing movement links", mesoLinkID)
 		}
 		sourceMesoNodeID := mesoLink.SourceNode()
 		sourceMesoNode, ok := mesoNodes[sourceMesoNodeID]
 		if !ok {
-			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find source node %d for mesoscopic link %d while processing movement links", sourceMesoNodeID, mesoLinkID)
+			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find source node %v for mesoscopic link %v while processing movement links", sourceMesoNodeID, mesoLinkID)
 		}
 		incomingMesoLinks := sourceMesoNode.IncomingLinks()
 		if incomingMesoLinks.Len() == 0 {
@@ -907,16 +969,22 @@ func updateLinksProperties(
 			upstreamMesoLinkID = id
 		default:
 			fmt.Println(id)
-			return errors.Wrapf(ErrBadInterface, "Can't get correct type for upstream for source mesoscopic node %d of mesoscopic link %d", sourceMesoNode.ID, mesoLinkID)
+			return errors.Wrapf(ErrBadInterface, "Can't get correct type for upstream for source mesoscopic node %v of mesoscopic link %v", sourceMesoNode.ID, mesoLinkID)
 		}
 		upstreamMesoLink, ok := mesoLinks[upstreamMesoLinkID]
 		if !ok {
-			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find mesoscopic link %d while processing movement links", mesoLinkID)
+			return errors.Wrapf(meso.ErrLinkNotFound, "Can't find mesoscopic link %v while processing movement links", mesoLinkID)
 		}
 		// Inherit upstream mesoscopic link properties
 		meso.WithLinkType(upstreamMesoLink.LinkType())(mesoLink)
-		meso.WithFreeSpeed(upstreamMesoLink.FreeSpeed())(mesoLink)
-		meso.WithCapacity(upstreamMesoLink.Capacity())(mesoLink)
+		freeSpeed, hasFreeSpeed := upstreamMesoLink.FreeSpeed()
+		if hasFreeSpeed {
+			meso.WithFreeSpeed(freeSpeed)(mesoLink)
+		}
+		capacity, hasCapacity := upstreamMesoLink.Capacity()
+		if hasCapacity {
+			meso.WithCapacity(capacity)(mesoLink)
+		}
 		meso.WithAllowedAgentTypes(upstreamMesoLink.AllowedAgentTypes())(mesoLink)
 	}
 	return nil

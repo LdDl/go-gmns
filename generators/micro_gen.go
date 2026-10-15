@@ -52,6 +52,42 @@ type mesoMicroMapping map[gmns.LinkID]map[int][]gmns.NodeID
 
 // GenerateMicroscopic generates microscopic network from macro and meso networks
 func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movement.MovementsStorage, opts ...MicroGenOptions) (*micro.Net, error) {
+	err := requireDirectedMacroLinks(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = requireDirectedMesoLinks(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	err = requireMesoRoadLengths(macroNet, mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	err = macroNet.ValidateMovements(movements)
+	if err != nil {
+		return nil, err
+	}
+	err = mesoNet.ValidateSourceReferences(macroNet, movements)
+	if err != nil {
+		return nil, err
+	}
+	macroKind, err := macroIdentifierType(macroNet)
+	if err != nil {
+		return nil, err
+	}
+	err = movements.ValidateIDType(macroKind)
+	if err != nil {
+		return nil, err
+	}
+	err = requireSupportedMesoDataset(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	if macroNet.HasDetailedRecords() {
+		return nil, fmt.Errorf("%w: supplied macro lane/segment records", ErrUnsupportedGenerationInput)
+	}
+
 	options := DefaultMicroGenOptions()
 	if len(opts) > 0 {
 		options = opts[0]
@@ -61,7 +97,14 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 		fmt.Print("Generating microscopic network...")
 	}
 
-	microNet := micro.NewNet()
+	kind, err := mesoIdentifierType(mesoNet)
+	if err != nil {
+		return nil, err
+	}
+	microNet, err := micro.NewNetWithIDType(kind)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build reverse mapping: macro link ID -> meso link IDs
 	macroLinkMesoLinks := buildMacroToMesoMapping(mesoNet)
@@ -72,19 +115,19 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 		sortedMacroLinkIDs = append(sortedMacroLinkIDs, linkID)
 	}
 	sort.Slice(sortedMacroLinkIDs, func(i, j int) bool {
-		return sortedMacroLinkIDs[i] < sortedMacroLinkIDs[j]
+		return sortedMacroLinkIDs[i].Less(sortedMacroLinkIDs[j])
 	})
 	for _, macroLinkID := range sortedMacroLinkIDs {
 		macroLink := macroNet.Links[macroLinkID]
 		mesoLinkIDs := macroLinkMesoLinks[macroLink.ID]
 		err := processMacroLink(macroNet, mesoNet, microNet, macroLink, mesoLinkIDs, options)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to process macro link %d", macroLink.ID)
+			return nil, errors.Wrapf(err, "failed to process macro link %v", macroLink.ID)
 		}
 	}
 
 	// Connect micro links through movements
-	err := connectMicroLinks(mesoNet, microNet, options)
+	err = connectMicroLinks(mesoNet, microNet, options)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect micro links")
 	}
@@ -97,9 +140,13 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	}
 
 	if options.Verbose {
-		fmt.Printf(" Done. Nodes: %d, Links: %d\n", len(microNet.Nodes), len(microNet.Links))
+		fmt.Printf(" Done. Nodes: %v, Links: %v\n", len(microNet.Nodes), len(microNet.Links))
 	}
 
+	err = copyMesoCatalogs(mesoNet, microNet)
+	if err != nil {
+		return nil, err
+	}
 	return microNet, nil
 }
 
@@ -112,18 +159,30 @@ func buildMacroToMesoMapping(mesoNet *meso.Net) map[gmns.LinkID][]gmns.LinkID {
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 	for _, mesoLinkID := range sortedMesoLinkIDs {
 		mesoLink := mesoNet.Links[mesoLinkID]
 		macroLinkID := mesoLink.MacroLink()
-		if macroLinkID < 0 {
-			continue // Skip connection links (i.e. movements)
+		if macroLinkID.IsZero() {
+			// Skip connection links (i.e. movements).
+			continue
 		}
 		if _, ok := result[macroLinkID]; !ok {
 			result[macroLinkID] = make([]gmns.LinkID, 0, 1)
 		}
 		result[macroLinkID] = append(result[macroLinkID], mesoLink.ID)
+	}
+	// Segment order is calculated state, independent of identifier spelling.
+	for _, linkIDs := range result {
+		sort.Slice(linkIDs, func(first, second int) bool {
+			firstLink := mesoNet.Links[linkIDs[first]]
+			secondLink := mesoNet.Links[linkIDs[second]]
+			if firstLink.SegmentIdx() != secondLink.SegmentIdx() {
+				return firstLink.SegmentIdx() < secondLink.SegmentIdx()
+			}
+			return firstLink.ID.Less(secondLink.ID)
+		})
 	}
 	return result
 }
@@ -146,13 +205,13 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 		sortedMicroNodeIDs = append(sortedMicroNodeIDs, nodeID)
 	}
 	sort.Slice(sortedMicroNodeIDs, func(i, j int) bool {
-		return sortedMicroNodeIDs[i] < sortedMicroNodeIDs[j]
+		return sortedMicroNodeIDs[i].Less(sortedMicroNodeIDs[j])
 	})
 
 	for _, nodeID := range sortedMicroNodeIDs {
 		node := microNet.Nodes[nodeID]
 		mesoLinkID := node.MesoLink()
-		if mesoLinkID < 0 {
+		if mesoLinkID.IsZero() {
 			continue
 		}
 		laneID := node.LaneID()
@@ -174,7 +233,7 @@ func buildMesoMicroMapping(microNet *micro.Net) mesoMicroMapping {
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, mesoLinkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 
 	for _, mesoLinkID := range sortedMesoLinkIDs {
@@ -210,11 +269,15 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 		return nil // Skip links without meso links
 	}
 
-	// Determine multimodal agent types
-	agentTypes := macroLink.AllowedAgentTypes()
-	mainAgents, hasBike, hasWalk := prepareBikeWalkAgents(agentTypes, opts.SeparateBikeWalk)
+	lanesNum, err := requiredMacroLaneCount(macroLink)
+	if err != nil {
+		return err
+	}
+	originalLanesNum := float64(lanesNum)
 
-	originalLanesNum := float64(macroLink.LanesNum())
+	// Determine multimodal agent types.
+	agentTypes := macroLink.AllowedAgentTypes()
+	mainAgents, hasBike, hasWalk := prepareBikeWalkAgents(agentTypes, opts.SeparateBikeWalk, lanesNum)
 
 	// Local mapping to track micro nodes during generation
 	localMapping := make(mesoMicroMapping)
@@ -223,12 +286,12 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 	for _, mesoLinkID := range mesoLinkIDs {
 		mesoLink, ok := mesoNet.Links[mesoLinkID]
 		if !ok {
-			return fmt.Errorf("meso link %d not found", mesoLinkID)
+			return fmt.Errorf("meso link %v not found", mesoLinkID)
 		}
 
 		err := createMicroNodesForMesoLink(microNet, mesoLink, originalLanesNum, hasBike, hasWalk, opts, localMapping)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create micro nodes for meso link %d", mesoLinkID)
+			return errors.Wrapf(err, "failed to create micro nodes for meso link %v", mesoLinkID)
 		}
 	}
 
@@ -241,7 +304,7 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 	}
 
 	// Merge nodes between adjacent meso links
-	err := mergeAdjacentMesoLinks(mesoNet, microNet, mesoLinkIDs, hasBike, hasWalk, localMapping)
+	err = mergeAdjacentMesoLinks(mesoNet, microNet, mesoLinkIDs, hasBike, hasWalk, localMapping)
 	if err != nil {
 		return err
 	}
@@ -254,7 +317,7 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 		}
 		err := createMicroLinksForMesoLink(microNet, mesoLink, mainAgents, hasBike, hasWalk, localMapping)
 		if err != nil {
-			return errors.Wrapf(err, "failed to create micro links for meso link %d", mesoLinkID)
+			return errors.Wrapf(err, "failed to create micro links for meso link %v", mesoLinkID)
 		}
 	}
 
@@ -263,19 +326,27 @@ func processMacroLink(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Ne
 
 // createMicroNodesForMesoLink creates micro nodes for a single meso link
 func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, originalLanesNum float64, hasBike, hasWalk bool, opts MicroGenOptions, localMapping mesoMicroMapping) error {
+	lengthMeters, err := requiredMesoLength(mesoLink)
+	if err != nil {
+		return err
+	}
+	lanesNum, err := requiredMesoLaneCount(mesoLink)
+	if err != nil {
+		return err
+	}
 	lanesChange := mesoLink.LanesChange()
 	laneChangesLeft := float64(lanesChange[0])
 	lanesNumOffset := -1 * (originalLanesNum/2 - 0.5 + laneChangesLeft)
 
 	// Calculate number of cells
-	cellsNum := int(math.Max(1.0, math.Round(mesoLink.LengthMeters()/opts.CellLength)))
+	cellsNum := int(math.Max(1.0, math.Round(lengthMeters/opts.CellLength)))
 
 	// Generate lane geometries with offset
-	laneGeometries := make([]orb.LineString, mesoLink.LanesNum())
+	laneGeometries := make([]orb.LineString, lanesNum)
 	var bikeGeometry, walkGeometry orb.LineString
 	lastOffset := 0.0
 
-	for i := 0; i < mesoLink.LanesNum(); i++ {
+	for i := 0; i < lanesNum; i++ {
 		laneOffset := (lanesNumOffset + float64(i)) * opts.LaneWidth
 		lastOffset = laneOffset
 		if math.Abs(laneOffset) > 1e-2 {
@@ -315,13 +386,13 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 	}
 
 	// Create micro nodes for each lane
-	for laneIdx := 0; laneIdx < mesoLink.LanesNum(); laneIdx++ {
+	for laneIdx := 0; laneIdx < lanesNum; laneIdx++ {
 		laneID := laneIdx + 1
 		laneNodeIDs := make([]gmns.NodeID, 0, cellsNum+1)
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(laneGeometries[laneIdx], distance)
 			pointEuc := geomath.PointToEuclidean(point)
 
@@ -334,7 +405,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			laneNodeIDs = append(laneNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][laneID] = laneNodeIDs
@@ -347,7 +421,7 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(bikeGeometry, distance)
 			pointEuc := geomath.PointToEuclidean(point)
 
@@ -360,7 +434,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			bikeNodeIDs = append(bikeNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][bikeLaneID] = bikeNodeIDs
@@ -373,7 +450,7 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 
 		for cellIdx := 0; cellIdx <= cellsNum; cellIdx++ {
 			fraction := float64(cellIdx) / float64(cellsNum)
-			distance := mesoLink.LengthMeters() * fraction
+			distance := lengthMeters * fraction
 			point, _ := geo.PointAtDistanceAlongLine(walkGeometry, distance)
 			pointEuc := geomath.PointToEuclidean(point)
 
@@ -386,7 +463,10 @@ func createMicroNodesForMesoLink(microNet *micro.Net, mesoLink *meso.Link, origi
 				micro.WithCellIndex(cellIdx),
 				micro.WithBoundaryType(types.BOUNDARY_NONE),
 			)
-			microNet.AddNode(node)
+			nodeErr := microNet.AddNode(node)
+			if nodeErr != nil {
+				return nodeErr
+			}
 			walkNodeIDs = append(walkNodeIDs, nodeID)
 		}
 		localMapping[mesoLink.ID][walkLaneID] = walkNodeIDs
@@ -415,7 +495,11 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[0]]; ok {
 						node.SetUpstreamEnd(true)
-						node.SetZoneID(macroSourceNode.Zone())
+						copyMacroEndpoint(macroSourceNode, node)
+						zoneID, hasZone := macroSourceNode.Zone()
+						if hasZone {
+							node.SetZoneID(zoneID)
+						}
 					}
 				}
 			}
@@ -440,7 +524,11 @@ func markEndNodes(macroNet *macro.Net, microNet *micro.Net, macroLink *macro.Lin
 				if len(nodeIDs) > 0 {
 					if node, ok := microNet.Nodes[nodeIDs[len(nodeIDs)-1]]; ok {
 						node.SetDownstreamEnd(true)
-						node.SetZoneID(macroTargetNode.Zone())
+						copyMacroEndpoint(macroTargetNode, node)
+						zoneID, hasZone := macroTargetNode.Zone()
+						if hasZone {
+							node.SetZoneID(zoneID)
+						}
 					}
 				}
 			}
@@ -458,6 +546,14 @@ func mergeAdjacentMesoLinks(mesoNet *meso.Net, microNet *micro.Net, mesoLinkIDs 
 
 		upstreamMesoLink := mesoNet.Links[upstreamMesoLinkID]
 		downstreamMesoLink := mesoNet.Links[downstreamMesoLinkID]
+		upstreamLanesNum, err := requiredMesoLaneCount(upstreamMesoLink)
+		if err != nil {
+			return err
+		}
+		downstreamLanesNum, err := requiredMesoLaneCount(downstreamMesoLink)
+		if err != nil {
+			return err
+		}
 
 		upstreamLanesChange := upstreamMesoLink.LanesChange()
 		downstreamLanesChange := downstreamMesoLink.LanesChange()
@@ -467,8 +563,8 @@ func mergeAdjacentMesoLinks(mesoNet *meso.Net, microNet *micro.Net, mesoLinkIDs 
 		downstreamLaneStart := downstreamLanesChange[0] - minLeftLane
 
 		numConnections := min(
-			upstreamMesoLink.LanesNum()-upstreamLaneStart,
-			downstreamMesoLink.LanesNum()-downstreamLaneStart,
+			upstreamLanesNum-upstreamLaneStart,
+			downstreamLanesNum-downstreamLaneStart,
 		)
 
 		upstreamLanes := localMapping[upstreamMesoLinkID]
@@ -606,11 +702,11 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 
 	sourceNode, ok := microNet.Nodes[sourceNodeID]
 	if !ok {
-		return fmt.Errorf("source micro node %d not found", sourceNodeID)
+		return fmt.Errorf("source micro node %v not found", sourceNodeID)
 	}
 	targetNode, ok := microNet.Nodes[targetNodeID]
 	if !ok {
-		return fmt.Errorf("target micro node %d not found", targetNodeID)
+		return fmt.Errorf("target micro node %v not found", targetNodeID)
 	}
 
 	geom := orb.LineString{sourceNode.Geom(), targetNode.Geom()}
@@ -629,13 +725,23 @@ func createMicroLink(microNet *micro.Net, mesoLink *meso.Link, sourceNodeID, tar
 		micro.WithLaneID(laneID),
 		micro.WithMesoLinkType(mesoLink.LinkType()),
 		micro.WithControlType(mesoLink.ControlType()),
-		micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-		micro.WithCapacity(mesoLink.Capacity()),
 		micro.WithAllowedAgentTypes(allowedAgents),
 		micro.WithMovementCompositeType(movement.MOVEMENT_UNDEFINED),
 	)
 
-	microNet.AddLink(link)
+	copyMesoRoadAttributes(mesoLink, link)
+	freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+	if hasFreeSpeed {
+		micro.WithFreeSpeed(freeSpeed)(link)
+	}
+	capacity, hasCapacity := mesoLink.Capacity()
+	if hasCapacity {
+		micro.WithCapacity(capacity)(link)
+	}
+	linkErr := microNet.AddLink(link)
+	if linkErr != nil {
+		return linkErr
+	}
 	sourceNode.AddOutcomingLink(linkID)
 	targetNode.AddIncomingLink(linkID)
 
@@ -653,20 +759,20 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 		sortedMesoLinkIDs = append(sortedMesoLinkIDs, linkID)
 	}
 	sort.Slice(sortedMesoLinkIDs, func(i, j int) bool {
-		return sortedMesoLinkIDs[i] < sortedMesoLinkIDs[j]
+		return sortedMesoLinkIDs[i].Less(sortedMesoLinkIDs[j])
 	})
 
 	for _, mesoLinkID := range sortedMesoLinkIDs {
 		mesoLink := mesoNet.Links[mesoLinkID]
 		// Process only movement meso links
-		if mesoLink.Movement() < 0 {
+		if mesoLink.Movement().IsZero() {
 			continue
 		}
 
 		incomeMesoLinkID := mesoLink.MovementMesoLinkIncome()
 		outcomeMesoLinkID := mesoLink.MovementMesoLinkOutcome()
 
-		if incomeMesoLinkID < 0 || outcomeMesoLinkID < 0 {
+		if incomeMesoLinkID.IsZero() || outcomeMesoLinkID.IsZero() {
 			continue
 		}
 
@@ -684,8 +790,12 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 			continue
 		}
 
+		lanesNum, err := requiredMesoLaneCount(mesoLink)
+		if err != nil {
+			return err
+		}
 		// Create connector cells for each lane in the movement
-		for laneOffset := 0; laneOffset < mesoLink.LanesNum(); laneOffset++ {
+		for laneOffset := 0; laneOffset < lanesNum; laneOffset++ {
 			incomeLaneID := incomeStartSeq + laneOffset + 1 // Convert to 1-indexed
 			outcomeLaneID := outcomeStartSeq + laneOffset + 1
 
@@ -731,7 +841,10 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 					micro.WithNodeLaneID(laneOffset+1),
 					micro.WithCellIndex(cellIdx),
 				)
-				microNet.AddNode(node)
+				nodeErr := microNet.AddNode(node)
+				if nodeErr != nil {
+					return nodeErr
+				}
 
 				// Create link from last node to this node
 				lastNode, _ := microNet.Nodes[lastNodeID]
@@ -751,13 +864,23 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 					micro.WithLaneID(laneOffset+1),
 					micro.WithMesoLinkType(mesoLink.LinkType()),
 					micro.WithControlType(mesoLink.ControlType()),
-					micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-					micro.WithCapacity(mesoLink.Capacity()),
 					micro.WithAllowedAgentTypes(mesoLink.AllowedAgentTypes()),
 					micro.WithIsFirstMovementCell(isFirstMovement),
 					micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 				)
-				microNet.AddLink(link)
+				copyMesoRoadAttributes(mesoLink, link)
+				freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+				if hasFreeSpeed {
+					micro.WithFreeSpeed(freeSpeed)(link)
+				}
+				capacity, hasCapacity := mesoLink.Capacity()
+				if hasCapacity {
+					micro.WithCapacity(capacity)(link)
+				}
+				linkErr := microNet.AddLink(link)
+				if linkErr != nil {
+					return linkErr
+				}
 				lastNode.AddOutcomingLink(linkID)
 				node.AddIncomingLink(linkID)
 
@@ -783,13 +906,23 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 				micro.WithLaneID(laneOffset+1),
 				micro.WithMesoLinkType(mesoLink.LinkType()),
 				micro.WithControlType(mesoLink.ControlType()),
-				micro.WithFreeSpeed(mesoLink.FreeSpeed()),
-				micro.WithCapacity(mesoLink.Capacity()),
 				micro.WithAllowedAgentTypes(mesoLink.AllowedAgentTypes()),
 				micro.WithIsFirstMovementCell(isFirstMovement),
 				micro.WithMovementCompositeType(mesoLink.MvmtTextID()),
 			)
-			microNet.AddLink(link)
+			copyMesoRoadAttributes(mesoLink, link)
+			freeSpeed, hasFreeSpeed := mesoLink.FreeSpeed()
+			if hasFreeSpeed {
+				micro.WithFreeSpeed(freeSpeed)(link)
+			}
+			capacity, hasCapacity := mesoLink.Capacity()
+			if hasCapacity {
+				micro.WithCapacity(capacity)(link)
+			}
+			linkErr := microNet.AddLink(link)
+			if linkErr != nil {
+				return linkErr
+			}
 			lastNode.AddOutcomingLink(linkID)
 			endNode.AddIncomingLink(linkID)
 		}
@@ -799,7 +932,7 @@ func connectMicroLinks(mesoNet *meso.Net, microNet *micro.Net, opts MicroGenOpti
 }
 
 // prepareBikeWalkAgents separates bike/walk agents if needed
-func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool) (main []types.AgentType, bike bool, walk bool) {
+func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool, lanesNum int) (main []types.AgentType, bike bool, walk bool) {
 	if len(agentTypes) == 0 || !separate {
 		main = make([]types.AgentType, len(agentTypes))
 		copy(main, agentTypes)
@@ -819,6 +952,17 @@ func prepareBikeWalkAgents(agentTypes []types.AgentType, separate bool) (main []
 		case types.AGENT_WALK:
 			hasWalk = true
 		}
+	}
+
+	// Without motor lanes, bike and walk need their own paths.
+	if lanesNum == 0 {
+		main = make([]types.AgentType, 0, len(agentTypes))
+		for _, agent := range agentTypes {
+			if agent != types.AGENT_BIKE && agent != types.AGENT_WALK {
+				main = append(main, agent)
+			}
+		}
+		return main, hasBike, hasWalk
 	}
 
 	if hasAuto && hasBike && hasWalk {
@@ -849,11 +993,11 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 		sortedMvmtIDs = append(sortedMvmtIDs, mvmtID)
 	}
 	sort.Slice(sortedMvmtIDs, func(i, j int) bool {
-		return sortedMvmtIDs[i] < sortedMvmtIDs[j]
+		return sortedMvmtIDs[i].Less(sortedMvmtIDs[j])
 	})
 	for _, mvmtID := range sortedMvmtIDs {
 		mvmt := movements[mvmtID]
-		movementsByNode[mvmt.MacroNode()] = append(movementsByNode[mvmt.MacroNode()], mvmt)
+		movementsByNode[mvmt.Node()] = append(movementsByNode[mvmt.Node()], mvmt)
 	}
 
 	// Process each macro node (sorted for deterministic iteration)
@@ -862,7 +1006,7 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 		sortedMacroNodeIDs = append(sortedMacroNodeIDs, nodeID)
 	}
 	sort.Slice(sortedMacroNodeIDs, func(i, j int) bool {
-		return sortedMacroNodeIDs[i] < sortedMacroNodeIDs[j]
+		return sortedMacroNodeIDs[i].Less(sortedMacroNodeIDs[j])
 	})
 
 	for _, macroNodeID := range sortedMacroNodeIDs {
@@ -877,8 +1021,8 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 
 		// Process each movement
 		for _, mvmt := range nodeMvmts {
-			incomingMacroLinkID := mvmt.IncomeMacroLink()
-			outcomingMacroLinkID := mvmt.OutcomeMacroLink()
+			incomingMacroLinkID := mvmt.IncomeLink()
+			outcomingMacroLinkID := mvmt.OutcomeLink()
 
 			if _, ok := macroNet.Links[incomingMacroLinkID]; !ok {
 				continue
@@ -888,10 +1032,23 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 			}
 
 			// Collect lanes info from movement
-			incomeLaneStart := mvmt.IncomeLaneStart()
-			incomeLaneEnd := mvmt.IncomeLaneEnd()
-			outcomeLaneStart := mvmt.OutcomeLaneStart()
-			outcomeLaneEnd := mvmt.OutcomeLaneEnd()
+			incomeLaneStart, hasIncomeLaneStart := mvmt.IncomeLaneStart()
+			incomeLaneEnd, hasIncomeLaneEnd := mvmt.IncomeLaneEnd()
+			outcomeLaneStart, hasOutcomeLaneStart := mvmt.OutcomeLaneStart()
+			outcomeLaneEnd, hasOutcomeLaneEnd := mvmt.OutcomeLaneEnd()
+			if !hasIncomeLaneStart || !hasOutcomeLaneStart {
+				continue
+			}
+			// An omitted endpoint denotes a single lane without changing the stored movement.
+			if !hasIncomeLaneEnd {
+				incomeLaneEnd = incomeLaneStart
+			}
+			if !hasOutcomeLaneEnd {
+				outcomeLaneEnd = outcomeLaneStart
+			}
+			if incomeLaneEnd < incomeLaneStart || outcomeLaneEnd < outcomeLaneStart {
+				continue
+			}
 
 			// Build lane arrays
 			var incomeLanes, outcomeLanes []int
@@ -971,10 +1128,18 @@ func fixGaps(macroNet *macro.Net, mesoNet *meso.Net, microNet *micro.Net, macroL
 			if incomeLaneStartIdx < 0 || outcomeLaneStartIdx < 0 {
 				continue
 			}
-			if incomeLaneStartIdx+len(incomeLanes)-1 > incomingMesoLink.LanesNum()-1 {
+			incomingLanesNum, err := requiredMesoLaneCount(incomingMesoLink)
+			if err != nil {
+				return err
+			}
+			outcomingLanesNum, err := requiredMesoLaneCount(outcomingMesoLink)
+			if err != nil {
+				return err
+			}
+			if incomeLaneStartIdx+len(incomeLanes)-1 > incomingLanesNum-1 {
 				continue
 			}
-			if outcomeLaneStartIdx+len(outcomeLanes)-1 > outcomingMesoLink.LanesNum()-1 {
+			if outcomeLaneStartIdx+len(outcomeLanes)-1 > outcomingLanesNum-1 {
 				continue
 			}
 

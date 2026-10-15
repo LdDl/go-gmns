@@ -1,440 +1,123 @@
 # GMNS - General Modeling Network Specification
 
-## About
-Go implementation of basic data in GMNS (General Modeling Network Specification). Contains data structures and generators utils for multi-resolution transportation networks.
+Go data structures, validation and generators for macroscopic, mesoscopic and microscopic transportation networks. Created for [osm2gmns](https://github.com/LdDl/osm2gmns), usable independently.
 
-The target specification for incremental alignment is [GMNS v0.97 by the Zephyr Foundation and Volpe/FHWA](https://github.com/zephyr-data-specs/GMNS/tree/v0.97/spec).
+Specification: [GMNS by the Zephyr Foundation and Volpe/FHWA](https://github.com/zephyr-data-specs/GMNS/tree/v0.97/spec).
 
-This package provides:
-- Data structures for macroscopic, mesoscopic, and microscopic networks
-- Generators for meso and micro networks from macro networks
-- Movement generation at intersections/junctions
-- GeoJSON export for debugging and visualization
+## Contents
 
-This package has been created for [osm2gmns](https://github.com/LdDl/osm2gmns) mostly, but can be used independently.
+- [Installation](#installation)
+- [Basic example](#basic-example)
+- [Architecture](#architecture)
+- [Current state](#current-state)
+- [Units and limitations](#units-and-limitations)
+- [Documentation](#documentation)
+- [References](#references)
+
+## Installation
+
+Requires Go 1.23.4 or later.
+
+```sh
+go get github.com/LdDl/go-gmns
+```
+
+## Basic example
+
+The [basic example](cmd/examples/basic/README.md) builds two nodes and one directed road link, validates the dataset and writes a GeoJSON FeatureCollection to stdout.
+
+Run from the repository root:
+
+```sh
+go run ./cmd/examples/basic > network.geojson
+```
+
+See [main.go](cmd/examples/basic/main.go) for the complete code and [generation](docs/generation.md) for the macro-to-micro pipeline.
 
 ## Architecture
 
 ### Generation Pipeline
 
+The OSM-to-macro step belongs to [osm2gmns](https://github.com/LdDl/osm2gmns). The remaining steps are provided by this library; callers can also construct macro networks directly.
+
 ```mermaid
 flowchart LR
-    subgraph Input
-        OSM[OSM Data]
+    OSM[OSM data]
+    subgraph Library[go-gmns]
+        Macro[Macro network]
+        Movements[Turn movements]
+        Meso[Meso network<br/>road segments with lane counts]
+        Micro[Micro network<br/>per-lane cells]
     end
-
-    subgraph go-gmns processing
-        Macro[Macro Network<br/>nodes + links]
-        Mvmt[Movements<br/>turn maneuvers]
-        Meso[Meso Network<br/>lane-level]
-        Micro[Micro Network<br/>cell-based]
-    end
-
-    OSM --> Macro
-    Macro --> Mvmt
+    OSM -->|osm2gmns| Macro
+    Macro --> Movements
     Macro --> Meso
-    Mvmt --> Meso
+    Movements --> Meso
     Macro --> Micro
     Meso --> Micro
-    Mvmt --> Micro
+    Movements --> Micro
 ```
 
 ### Network Resolution Levels
 
-| Level | Description | Typical Use Case |
-|-------|-------------|------------------|
-| **Macro** | Road segments between intersections/road topology changes. Single centerline geometry shared by both directions. Nodes = intersections, lane additions/drops | Route planning, traffic assignment |
-| **Meso** | One link per direction with offset geometry. Stores lane count attribute. Splits where lane count changes | Signal optimization, lane-based routing |
-| **Micro** | Per-lane, per-cell representation. Each meso link expanded to N lanes × M cells. Inter-lane links for lane changing after each cell | Microsimulation, car-following models |
+| Level | Representation | Possible downstream uses |
+|---|---|---|
+| Macro | Road links between intersections or topology changes; opposite directions can reference a shared geometry | Routing, traffic assignment |
+| Meso | Directed road segments split at lane-count changes, with offset geometry and junction connectors; each road link can carry multiple lanes | Intersection analysis, movement connectivity |
+| Micro | Chains of cells for individual lanes, with forward and adjacent-lane connections | Microscopic traffic simulation |
+
+The library builds graphs; traffic assignment, signal optimization and vehicle simulation belong to downstream software.
 
 ### Data Flow Example
 
-```
-Bidirectional road A<===>B, 2 lanes per direction:
+One directed road section with two lanes and no lane-count changes:
 
-MACRO (centerline geometry, shared by both directions):
-    (A) ==========[Link 1]==========> (B)
-    (A) <==========[Link 2]========== (B)
-
-MESO (offset geometry, one link per direction, lanes=2):
-    Direction A→B:  (X)----[Link 1]---->(Y)
-    Direction B→A:  (Z)----[Link 2]---->(K)
-
-MICRO (per-lane cells + lane-change links):
-    For meso Link 1 (lanes=2):
-
-    Lane 1: o-F---o-F---o-F---o-F---o  cell_type=forward
-             \   L \   L \   L \   L   cell_type=lane_change (left)
-              \ /   \ /   \ /   \ /
-              / \   / \   / \   / \    cell_type=lane_change (right)
-             /   R /   R /   R /   R
-    Lane 2: o-F---o-F---o-F---o-F---o  cell_type=forward
+```text
+Macro: A --[road link, lanes=2]--> B
+Meso:  X --[road segment, lanes=2]--> Y
+Micro: two rows of cells, one per lane
 ```
 
-Scale (typical):
-| Level | Nodes | Links | Ratio |
-|-------|-------|-------|-------|
-| Macro | 20 | 38 | 1x |
-| Meso | 76 | 110 | ~3x |
-| Micro | 3078 | 4022 | ~100x |
+One micro step along that section (all arrows follow travel):
 
-## Installation
-
-```bash
-go get github.com/LdDl/go-gmns
+```mermaid
+flowchart LR
+    A1[Lane 1, cell i] -->|forward| B1[Lane 1, cell i+1]
+    A2[Lane 2, cell i] -->|forward| B2[Lane 2, cell i+1]
+    A1 -->|lane_change| B2
+    A2 -->|lane_change| B1
 ```
 
 ## Current state
 
-### Network levels
+| Capability | Support | Scope |
+|---|---|---|
+| Macro, meso and micro networks | Storage and validation | Nodes, links, attributes and references |
+| Dataset records | Storage and validation | Configuration, geometries, zones, use definitions and groups |
+| Lane, segment and segment-lane records | Storage and validation | Supplied records; current generators do not transform them |
+| Movements | Storage at each network level; generation from macro | Generated meso/micro connectors retain source movement provenance |
+| Meso and micro generation | Available | Requires prepared topology, geometry and lane data |
+| GeoJSON | Nodes, links and separately exported movements | Visualization output; does not serialize the complete dataset |
+| WKT | `WKT()` on nodes, links, movements, geometries and zones | Two-dimensional geometry as a string |
+| Geometry utilities | Available | Coordinate conversion, offsets and distances |
 
-- [x] **Macroscopic network** (`macro/`)
-    - [x] Links with lane information
-    - [x] Nodes with control/boundary types
-    - [x] Network container
-    - [x] GeoJSON export
+## Units and limitations
 
-- [x] **Movements** a.k.a. allowed maneuvers at junctions (`movement/`)
-    - [x] Movement types (THRU, LEFT, RIGHT, UTURN)
-    - [x] Composite movement classification
-    - [x] Geometry utilities
-    - [x] GeoJSON export
+Working datasets use the **metric system**: lengths and altitudes in meters, speeds in km/h, time in seconds. Coordinates use WGS84 (`EPSG:4326`), in longitude/latitude order. Imperial-unit conversion and other coordinate reference systems are not implemented.
 
-- [x] **Mesoscopic network** (`meso/`)
-    - [x] Lane-level links
-    - [x] Lane-level nodes
-    - [x] Network container
-    - [x] GeoJSON export
+Generators require directed input links; represent two-way roads with two opposite directed links. Generated movements describe topology and lane connections, without interpreting OSM turn restrictions. Additional input requirements are listed in [generation](docs/generation.md#input-requirements).
 
-- [x] **Microscopic network** (`micro/`)
-    - [x] Cell-based links (forward, lane-change)
-    - [x] Cell vertex nodes
-    - [x] Network container
-    - [x] GeoJSON export
+Time-of-day, signal timing, location and curb records are outside the supported model. CSV dataset import/export is not provided by this package; see [osm2gmns](https://github.com/LdDl/osm2gmns) for OSM conversion and CSV output.
 
-### Generators (`generators/`)
+## Documentation
 
-- [x] **Movements** - turn movements at intersections
-- [x] **Mesoscopic data** - expands macro network to lane-level
-- [x] **Microscopic data** - cell-based decomposition of meso network
-
-### Basic stuff
-
-- [x] **Types** (`gmns/types/`)
-    - [x] LinkType, LinkClass, LinkConnectionType
-    - [x] ControlType, BoundaryType
-    - [x] AgentType (auto, bike, walk, etc.)
-    - [x] CellType (forward, lane_change)
-    - [x] ActivityType, AccessType
-    - [x] NetworkType, HighwayType
-
-- [x] **Utils** (`utils/geomath/`)
-    - [x] Coordinate transformations (WGS84/Euclidean)
-    - [x] Line offset calculations
-    - [x] Distance calculations
-
-### further work:
-
-- [ ] Traffic signal timing
-- [ ] Extended test coverage
-- [ ] Performance benchmarks
-
-## Data dictionary
-
-Most of it gracefully stolen from https://osm2gmns.readthedocs.io/en/stable/mrm.html
-
-### Macroscopic network
-
-The macroscopic network represents road segments at the highest level of abstraction, where each link connects two nodes (intersections or points where road topology changes).
-
-#### Macro nodes
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique node identifier |
-| `osm_node_id` | int64 | Original OpenStreetMap node ID |
-| `control_type` | string | Traffic control type at node: `none`, `yield`, `stop`, `signal`, `signal_minor_stop`, `signal_minor_yield` |
-| `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
-| `activity_type` | string | Activity type: `none`, `poi`, `link` |
-| `activity_link_type` | string | If activity_type=link, the predominant link type at this node |
-| `zone_id` | int64 | Zone identifier for boundary nodes (-1 if not applicable) |
-| `intersection_id` | int64 | Intersection cluster ID (-1 if not applicable) |
-| `poi_id` | int64 | Point of interest ID (-1 if not applicable) |
-| `osm_highway` | string | OSM highway tag value (e.g., `traffic_signals`, `crossing`) |
-| `name` | string | Node name from OSM data |
-| `longitude` | float64 | WGS84 longitude coordinate |
-| `latitude` | float64 | WGS84 latitude coordinate |
-
-#### Macro links
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique link identifier |
-| `source_node` | int64 | Source node ID |
-| `target_node` | int64 | Target node ID |
-| `osm_way_id` | int64 | Original OpenStreetMap way ID |
-| `source_osm_node_id` | int64 | Source OSM node ID |
-| `target_osm_node_id` | int64 | Target OSM node ID |
-| `link_class` | string | Road class: `highway`, `railway`, `aeroway` |
-| `is_link` | string | Connection type: `no`, `yes`, `merge`, `diverge` |
-| `link_type` | string | Road type: `motorway`, `trunk`, `primary`, `secondary`, `tertiary`, `residential`, `service`, `connector`, `cycleway`, `footway`, `track`, `undefined` |
-| `control_type` | string | Traffic control at downstream end |
-| `allowed_agent_types` | string | Comma-separated list of allowed agents: `auto`, `bike`, `walk`, `transit`, `rail`, `truck` |
-| `was_bidirectional` | bool | Whether original OSM way was bidirectional |
-| `lanes` | int | Number of lanes in this direction |
-| `max_speed` | float64 | Maximum speed limit (km/h) |
-| `free_speed` | float64 | Free-flow speed (km/h) |
-| `capacity` | int | Capacity (vehicles/hour) |
-| `length_meters` | float64 | Link length in meters |
-| `name` | string | Road name from OSM |
-| `geom` | WKT | LineString geometry in WKT format |
-
-### Movements
-
-Movements represent allowed turn maneuvers at intersections, connecting incoming links to outgoing links.
-
-#### Movement fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique movement identifier |
-| `node_id` | int64 | Macro node ID where movement occurs |
-| `osm_node_id` | int64 | OSM node ID of the intersection |
-| `name` | string | Movement name (typically empty) |
-| `in_link_id` | int64 | Incoming macro link ID |
-| `in_lane_start` | int | Starting lane index on incoming link |
-| `in_lane_end` | int | Ending lane index on incoming link |
-| `out_link_id` | int64 | Outgoing macro link ID |
-| `out_lane_start` | int | Starting lane index on outgoing link |
-| `out_lane_end` | int | Ending lane index on outgoing link |
-| `lanes_num` | int | Number of lanes for this movement |
-| `from_osm_node_id` | int64 | Source OSM node of incoming link |
-| `to_osm_node_id` | int64 | Target OSM node of outgoing link |
-| `type` | string | Movement direction: `thru`, `left`, `right`, `uturn` |
-| `penalty` | int | Turn penalty (-1 if not set) |
-| `capacity` | int | Movement capacity (-1 if not set) |
-| `control_type` | string | Traffic control type |
-| `movement_composite_type` | string | Composite type code (see table below) |
-| `volume` | int | Traffic volume (-1 if not set) |
-| `free_speed` | int | Free-flow speed (-1 if not set) |
-| `allowed_agent_types` | string | Comma-separated allowed agents |
-| `geom` | WKT | LineString geometry connecting link endpoints |
-
-#### Movement composite types
-
-The composite type combines incoming direction, outgoing direction, and turn direction:
-
-| Code | From | Turn | Description |
-|------|------|------|-------------|
-| `EBT` | East | Thru | Eastbound through |
-| `EBL` | East | Left | Eastbound left turn |
-| `EBR` | East | Right | Eastbound right turn |
-| `EBU` | East | U-turn | Eastbound U-turn |
-| `WBT` | West | Thru | Westbound through |
-| `WBL` | West | Left | Westbound left turn |
-| `WBR` | West | Right | Westbound right turn |
-| `WBU` | West | U-turn | Westbound U-turn |
-| `NBT` | North | Thru | Northbound through |
-| `NBL` | North | Left | Northbound left turn |
-| `NBR` | North | Right | Northbound right turn |
-| `NBU` | North | U-turn | Northbound U-turn |
-| `SBT` | South | Thru | Southbound through |
-| `SBL` | South | Left | Southbound left turn |
-| `SBR` | South | Right | Southbound right turn |
-| `SBU` | South | U-turn | Southbound U-turn |
-
-### Mesoscopic network
-
-The mesoscopic network provides lane-level representation with offset geometries for each direction.
-
-#### Meso nodes
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique meso node identifier |
-| `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
-| `macro_link_id` | int64 | Associated macro link ID for mid-link nodes (-1 if at intersection) |
-| `macro_zone_id` | int64 | Zone ID from macro network (-1 if not boundary) |
-| `activity_link_type` | string | Link type for activity nodes |
-| `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
-| `longitude` | float64 | WGS84 longitude |
-| `latitude` | float64 | WGS84 latitude |
-
-#### Meso links
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique meso link identifier |
-| `source_node` | int64 | Source meso node ID |
-| `target_node` | int64 | Target meso node ID |
-| `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
-| `macro_link_id` | int64 | Associated macro link ID |
-| `segment_idx` | int | Segment index within macro link |
-| `is_connection` | bool | Whether this is a connector link at intersection |
-| `movement_id` | int64 | Movement ID for connector links (-1 otherwise) |
-| `movement_composite_type` | string | Movement type code for connectors |
-| `in_lane_start` | int | Incoming lane start index |
-| `in_lane_end` | int | Incoming lane end index |
-| `out_lane_start` | int | Outgoing lane start index |
-| `out_lane_end` | int | Outgoing lane end index |
-| `control_type` | string | Traffic control type |
-| `link_type` | string | Road type from macro link |
-| `lanes_num` | int | Number of lanes |
-| `lanes_change` | int | Lane change indicator: -1 (decrease), 0 (same), +1 (increase) |
-| `free_speed` | float64 | Free-flow speed (km/h) |
-| `capacity` | int | Capacity (vehicles/hour) |
-| `allowed_agent_types` | string | Comma-separated allowed agents |
-| `length_meters` | float64 | Link length in meters |
-| `geom` | WKT | Offset LineString geometry |
-
-### Microscopic network
-
-The microscopic network provides cell-based representation for detailed simulation, decomposing each meso link into per-lane cells with lane-change connections.
-
-#### Micro nodes
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique micro node identifier |
-| `meso_link_id` | int64 | Associated meso link ID |
-| `lane_id` | int | Lane index within the meso link |
-| `cell_index` | int | Cell position along the lane (0 = upstream) |
-| `is_upstream_end` | bool | Whether node is at upstream end of meso link |
-| `is_downstream_end` | bool | Whether node is at downstream end of meso link |
-| `zone_id` | int64 | Zone ID for boundary nodes (-1 otherwise) |
-| `boundary_type` | string | Boundary type: `none`, `income_only`, `outcome_only`, `income_outcome` |
-| `longitude` | float64 | WGS84 longitude |
-| `latitude` | float64 | WGS84 latitude |
-
-#### Micro links
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | int64 | Unique micro link identifier |
-| `source_node` | int64 | Source micro node ID |
-| `target_node` | int64 | Target micro node ID |
-| `meso_link_id` | int64 | Associated meso link ID |
-| `macro_link_id` | int64 | Associated macro link ID |
-| `macro_node_id` | int64 | Associated macro node (-1 for road cells) |
-| `cell_type` | string | Cell type: `forward`, `lane_change_left`, `lane_change_right` |
-| `lane_id` | int | Lane index (for forward cells) |
-| `is_first_movement_cell` | bool | Whether this is first cell of a movement |
-| `movement_composite_type` | string | Movement type for connection cells |
-| `additional_travel_cost` | float64 | Extra cost for lane changes |
-| `meso_link_type` | string | Link type from meso network |
-| `control_type` | string | Traffic control type |
-| `allowed_agent_types` | string | Comma-separated allowed agents |
-| `free_speed` | float64 | Free-flow speed (km/h) |
-| `capacity` | int | Capacity (vehicles/hour) |
-| `length_meters` | float64 | Cell length in meters |
-| `geom` | WKT | LineString geometry |
-
-### Entity relationships
-
-```mermaid
-erDiagram
-    MacroNode ||--o{ MacroLink : "source/target"
-    MacroNode ||--o{ Movement : "occurs at"
-    MacroLink ||--o{ Movement : "in/out link"
-    MacroLink ||--o{ MesoLink : "expands to"
-    MacroNode ||--o| MesoNode : "maps to"
-    MesoNode ||--o{ MesoLink : "source/target"
-    Movement ||--o| MesoLink : "connection link"
-    MesoLink ||--o{ MicroNode : "contains"
-    MesoLink ||--o{ MicroLink : "decomposes to"
-    MicroNode ||--o{ MicroLink : "source/target"
-
-    MacroNode {
-        int64 id PK
-        int64 osm_node_id
-        string control_type
-        string boundary_type
-    }
-    MacroLink {
-        int64 id PK
-        int64 source_node FK
-        int64 target_node FK
-        int64 osm_way_id
-        int lanes
-        string link_type
-    }
-    Movement {
-        int64 id PK
-        int64 node_id FK
-        int64 in_link_id FK
-        int64 out_link_id FK
-        string type
-        string mvmt_txt_id
-    }
-    MesoNode {
-        int64 id PK
-        int64 macro_node_id FK
-        int64 macro_link_id FK
-        string boundary_type
-    }
-    MesoLink {
-        int64 id PK
-        int64 source_node FK
-        int64 target_node FK
-        int64 macro_link_id FK
-        int64 movement_id FK
-        int lanes_num
-    }
-    MicroNode {
-        int64 id PK
-        int64 meso_link_id FK
-        int lane_id
-        int cell_index
-    }
-    MicroLink {
-        int64 id PK
-        int64 source_node FK
-        int64 target_node FK
-        int64 meso_link_id FK
-        string cell_type
-    }
-```
-
-## Generation process
-
-### Step 1: Macro network
-
-The macro network is constructed from OpenStreetMap data:
-1. Ways are split at crossing nodes (intersections, road topology changes)
-2. Bidirectional ways generate two links (one per direction), but share geometry
-3. Boundary types are determined based on connectivity
-4. Activity types are assigned based on connected link types
-
-This piece of whole pipeline is not implemented here, but in [osm2gmns](https://github.com/LdDl/osm2gmns) tool.
-
-### Step 2: Movement generation
-
-Movements are generated at each macro node:
-1. For **merge nodes** (one outgoing link): Connects all incoming links to the single outgoing link
-2. For **diverge nodes** and **intersections** (multiple outgoing links): Creates movements from each incoming link to each compatible outgoing link
-3. Lane mapping determines which lanes connect through each movement
-4. Movement direction (thru/left/right/uturn) is computed from geometry angles
-
-### Step 3: Meso network
-
-The meso network expands macro network to lane-level:
-1. Each macro link generates meso segments between lane-change points
-2. Meso nodes are created at intersections and mid-link lane transitions
-3. **Connection links** are added at intersections based on movements
-4. Offset geometry is computed for each direction
-
-### Step 4: Micro network
-
-The micro network decomposes meso links into cells:
-1. Each meso link is divided into cells of configurable length (default ~7m)
-2. Each lane gets its own row of cells
-3. **Forward links** connect cells along the same lane
-4. **Lane-change links** connect adjacent lanes at each cell boundary
-5. Movement cells inherit the movement's composite type
-
-## Usage Example
-
-The best thing to get idea is to explore this tool: https://github.com/LdDl/osm2gmns.
+| Document | Contents |
+|---|---|
+| [Data model](docs/data-model.md) | Dataset ownership, attributes, references, calculated data, GeoJSON and WKT |
+| [Types and constants](docs/types.md) | Built-in values for control, node, movement, road, agent, cell and infrastructure categories |
+| [Generation](docs/generation.md) | Input preparation, generator calls, behavior and options |
+| [Basic example](cmd/examples/basic/README.md) | A runnable network construction and GeoJSON export example |
 
 ## References
-Lu, J., & Zhou, X.S. (2023). Virtual track networks: A hierarchical modeling framework and open-source tools for simplified and efficient connected and automated mobility (CAM) system design based on general modeling network specification (GMNS). Transportation Research Part C: Emerging Technologies, 153, 104223. [paper link](https://linkinghub.elsevier.com/retrieve/pii/S0968090X23002127)
+
+Lu, J., & Zhou, X.S. (2023). Virtual track networks: A hierarchical modeling framework and open-source tools for simplified and efficient connected and automated mobility (CAM) system design based on general modeling network specification (GMNS). Transportation Research Part C: Emerging Technologies, 153, 104223. [Paper](https://linkinghub.elsevier.com/retrieve/pii/S0968090X23002127).

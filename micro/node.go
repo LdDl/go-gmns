@@ -9,6 +9,15 @@ import (
 
 // Node represents a microscopic network node (cell vertex)
 type Node struct {
+	controlType types.ControlType
+
+	altitudeMeters *float64
+
+	parentNodeID *gmns.NodeID
+
+	name     string
+	nodeType string
+
 	ID gmns.NodeID
 
 	geom          orb.Point
@@ -21,7 +30,8 @@ type Node struct {
 	isUpstreamEnd   bool // Is this node at the upstream end of a macroscopic link
 	isDownstreamEnd bool // Is this node at the downstream end of a macroscopic link
 
-	zoneID       gmns.NodeID        // Inherited from macroscopic node
+	// Inherited from macroscopic node
+	zoneID       *gmns.NodeID
 	boundaryType types.BoundaryType // Inherited from macroscopic node
 
 	incomingLinks  *orderedmap.OrderedMap
@@ -34,12 +44,11 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:              id,
 		geom:            orb.Point{},
 		geomEuclidean:   orb.Point{},
-		mesoLinkID:      -1,
+		mesoLinkID:      gmns.LinkID{},
 		laneID:          0,
 		cellIndex:       -1,
 		isUpstreamEnd:   false,
 		isDownstreamEnd: false,
-		zoneID:          -1,
 		boundaryType:    types.BOUNDARY_NONE,
 		incomingLinks:   orderedmap.NewOrderedMap(),
 		outcomingLinks:  orderedmap.NewOrderedMap(),
@@ -48,6 +57,23 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		option(newNode)
 	}
 	return newNode
+}
+
+// AltitudeMeters returns the supplied altitude in meters and whether it is set.
+func (node *Node) AltitudeMeters() (float64, bool) {
+	if node.altitudeMeters == nil {
+		return 0, false
+	}
+	return *node.altitudeMeters, true
+}
+
+// WithAltitudeMeters stores altitude independently of the two-dimensional geometry.
+// Zero and negative altitudes are supplied values, not absence.
+func WithAltitudeMeters(altitudeMeters float64) func(*Node) {
+	return func(node *Node) {
+		value := altitudeMeters
+		node.altitudeMeters = &value
+	}
 }
 
 // Geom returns corresponding geometry [WGS84]
@@ -60,7 +86,7 @@ func (node *Node) GeomEuclidean() orb.Point {
 	return node.geomEuclidean
 }
 
-// MesoLink returns identifier of parent mesoscopic link. Outputs "-1" if not set.
+// MesoLink returns identifier of parent mesoscopic link. Returns a zero ID when absent.
 func (node *Node) MesoLink() gmns.LinkID {
 	return node.mesoLinkID
 }
@@ -85,9 +111,12 @@ func (node *Node) IsDownstreamEnd() bool {
 	return node.isDownstreamEnd
 }
 
-// ZoneID returns the zone identifier. Outputs "-1" if not set.
-func (node *Node) ZoneID() gmns.NodeID {
-	return node.zoneID
+// ZoneID returns the supplied zone identifier and whether it is set.
+func (node *Node) ZoneID() (gmns.NodeID, bool) {
+	if node.zoneID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.zoneID, true
 }
 
 // BoundaryType returns node boundary type
@@ -157,7 +186,8 @@ func WithIsDownstreamEnd(isDownstreamEnd bool) func(*Node) {
 // WithZoneID sets the zone identifier
 func WithZoneID(zoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.zoneID = zoneID
+		value := zoneID
+		node.zoneID = &value
 	}
 }
 
@@ -208,5 +238,81 @@ func (node *Node) SetDownstreamEnd(isDownstreamEnd bool) {
 
 // SetZoneID sets the zone identifier
 func (node *Node) SetZoneID(zoneID gmns.NodeID) {
-	node.zoneID = zoneID
+	value := zoneID
+	node.zoneID = &value
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
+	}
+}
+
+// Name returns the supplied node name, or an empty string when not supplied.
+func (node *Node) Name() string {
+	return node.name
+}
+
+// WithNodeName sets the node name; an empty string clears the value.
+func WithNodeName(name string) func(*Node) {
+	return func(node *Node) {
+		node.name = name
+	}
+}
+
+// ParentNode returns the optional associated node ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (node *Node) ParentNode() (gmns.NodeID, bool) {
+	if node.parentNodeID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.parentNodeID, true
+}
+
+// WithParentNodeID sets an associated node reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
+	return func(node *Node) {
+		value := parentNodeID
+		node.parentNodeID = &value
+	}
+}
+
+// ControlType returns the supplied control category, or empty if absent.
+func (node *Node) ControlType() types.ControlType {
+	return node.controlType
+}
+
+// WithNodeControlType stores or clears a supplied control category.
+func WithNodeControlType(controlType types.ControlType) func(*Node) {
+	return func(node *Node) {
+		node.controlType = controlType
+	}
+}
+
+// WithoutAltitudeMeters clears the supplied value, restoring absence.
+func WithoutAltitudeMeters() func(*Node) {
+	return func(node *Node) {
+		node.altitudeMeters = nil
+	}
+}
+
+// WithoutParentNodeID clears the supplied value, restoring absence.
+func WithoutParentNodeID() func(*Node) {
+	return func(node *Node) {
+		node.parentNodeID = nil
+	}
+}
+
+// WithoutZoneID clears the supplied value, restoring absence.
+func WithoutZoneID() func(*Node) {
+	return func(node *Node) {
+		node.zoneID = nil
+	}
 }

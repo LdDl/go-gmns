@@ -9,6 +9,12 @@ import (
 
 // Node representation of a vertex in a macroscopic graph
 type Node struct {
+	altitudeMeters *float64
+
+	parentNodeID *gmns.NodeID
+
+	nodeType string
+
 	incomingLinks  []gmns.LinkID
 	outcomingLinks []gmns.LinkID
 
@@ -17,7 +23,7 @@ type Node struct {
 	ID               gmns.NodeID
 	osmNodeID        osm.NodeID
 	intersectionID   int
-	zoneID           gmns.NodeID
+	zoneID           *gmns.NodeID
 	poiID            gmns.PoiID
 	controlType      types.ControlType
 	boundaryType     types.BoundaryType
@@ -41,9 +47,7 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		ID:               id,
 		osmNodeID:        osm.NodeID(-1),
 		intersectionID:   -1,
-		zoneID:           -1,
 		poiID:            -1,
-		controlType:      types.CONTROL_TYPE_NOT_SIGNAL,
 		boundaryType:     types.BOUNDARY_NONE,
 		activityType:     types.ACTIVITY_NONE,
 		activityLinkType: types.LINK_UNDEFINED,
@@ -87,9 +91,12 @@ func (node *Node) Intersection() int {
 	return node.intersectionID
 }
 
-// Zone returns zone identifier. Outputs "-1" if it was not set.
-func (node *Node) Zone() gmns.NodeID {
-	return node.zoneID
+// Zone returns the supplied zone identifier and whether it is set.
+func (node *Node) Zone() (gmns.NodeID, bool) {
+	if node.zoneID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.zoneID, true
 }
 
 // POI returns POI identifier. Outputs "-1" if it was not set.
@@ -115,6 +122,23 @@ func (node *Node) ActivityType() types.ActivityType {
 // ActivityLinkType returns node activity link type (based on Link information)
 func (node *Node) ActivityLinkType() types.LinkType {
 	return node.activityLinkType
+}
+
+// AltitudeMeters returns the supplied altitude in meters and whether it is set.
+func (node *Node) AltitudeMeters() (float64, bool) {
+	if node.altitudeMeters == nil {
+		return 0, false
+	}
+	return *node.altitudeMeters, true
+}
+
+// WithAltitudeMeters stores altitude independently of the two-dimensional geometry.
+// Zero and negative altitudes are supplied values, not absence.
+func WithAltitudeMeters(altitudeMeters float64) func(*Node) {
+	return func(node *Node) {
+		value := altitudeMeters
+		node.altitudeMeters = &value
+	}
 }
 
 // Geom returns corresponding geometry [WGS84]
@@ -177,7 +201,8 @@ func WithIntersectionID(intersectionID int) func(*Node) {
 // WithZoneID sets zone identifier for the node
 func WithZoneID(zoneID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
-		node.zoneID = zoneID
+		value := zoneID
+		node.zoneID = &value
 	}
 }
 
@@ -227,5 +252,56 @@ func WithPointGeom(geom orb.Point) func(*Node) {
 func WithPointGeomEuclidean(geomEuclidean orb.Point) func(*Node) {
 	return func(node *Node) {
 		node.geomEuclidean = geomEuclidean
+	}
+}
+
+// NodeType returns what the node represents, or an empty string when not supplied.
+func (node *Node) NodeType() string {
+	return node.nodeType
+}
+
+// WithNodeType sets what the node represents; an empty string clears the value.
+func WithNodeType(nodeType string) func(*Node) {
+	return func(node *Node) {
+		node.nodeType = nodeType
+	}
+}
+
+// ParentNode returns the optional associated node ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (node *Node) ParentNode() (gmns.NodeID, bool) {
+	if node.parentNodeID == nil {
+		return gmns.NodeID{}, false
+	}
+	return *node.parentNodeID, true
+}
+
+// WithParentNodeID sets an associated node reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
+	return func(node *Node) {
+		value := parentNodeID
+		node.parentNodeID = &value
+	}
+}
+
+// WithoutAltitudeMeters clears the supplied value, restoring absence.
+func WithoutAltitudeMeters() func(*Node) {
+	return func(node *Node) {
+		node.altitudeMeters = nil
+	}
+}
+
+// WithoutParentNodeID clears the supplied value, restoring absence.
+func WithoutParentNodeID() func(*Node) {
+	return func(node *Node) {
+		node.parentNodeID = nil
+	}
+}
+
+// WithoutZoneID clears the supplied value, restoring absence.
+func WithoutZoneID() func(*Node) {
+	return func(node *Node) {
+		node.zoneID = nil
 	}
 }

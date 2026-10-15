@@ -9,6 +9,23 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	toll         *float64
+	facilityType string
+	allowedUses  string
+
+	rightOfWayWidthMeters *float64
+
+	bikeFacility string
+	pedFacility  string
+	parking      string
+
+	gradePercent *float64
+	jurisdiction string
+
+	directed bool
+
+	parentLinkID *gmns.LinkID
+
 	lanesInfo          LanesInfo
 	name               string
 	geom               orb.LineString
@@ -16,8 +33,8 @@ type Link struct {
 	geometryID         *gmns.GeometryID
 	dirFlag            *gmns.DirectionFlag
 	allowedAgentTypes  []types.AgentType
-	lengthMeters       float64
-	freeSpeed          float64
+	lengthMeters       *float64
+	freeSpeed          *float64
 	maxSpeed           float64
 	ID                 gmns.LinkID
 	sourceNodeID       gmns.NodeID
@@ -25,8 +42,8 @@ type Link struct {
 	osmWayID           osm.WayID
 	sourceOsmNodeID    osm.NodeID
 	targetOsmNodeID    osm.NodeID
-	lanesNum           int
-	capacity           int
+	lanesNum           *int
+	capacity           *float64
 	linkClass          types.LinkClass
 	linkType           types.LinkType
 	linkConnectionType types.LinkConnectionType
@@ -37,13 +54,12 @@ type Link struct {
 // NewLinkFrom creates pointer to the new Link
 func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
 	newLink := &Link{
+		directed:           true,
 		lanesInfo:          LanesInfo{},
 		name:               "",
 		geom:               orb.LineString{},
 		geomEuclidean:      orb.LineString{},
 		allowedAgentTypes:  []types.AgentType{},
-		lengthMeters:       -1,
-		freeSpeed:          -1,
 		maxSpeed:           -1,
 		ID:                 id,
 		sourceNodeID:       sourceNodeID,
@@ -51,12 +67,9 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		osmWayID:           osm.WayID(-1),
 		sourceOsmNodeID:    osm.NodeID(-1),
 		targetOsmNodeID:    osm.NodeID(-1),
-		lanesNum:           -1,
-		capacity:           -1,
 		linkClass:          types.LINK_CLASS_UNDEFINED,
 		linkType:           types.LINK_UNDEFINED,
 		linkConnectionType: types.NOT_A_LINK,
-		controlType:        types.CONTROL_TYPE_NOT_SIGNAL,
 		wasBidirectional:   false,
 	}
 	for _, option := range options {
@@ -113,7 +126,11 @@ func (link *Link) GetOutcomingLaneIndices() []int {
 	if idx < 0 {
 		return make([]int, 0)
 	}
-	return laneIndices(link.lanesNum, lanesInfo.LanesChange[idx][0], lanesInfo.LanesChange[idx][1])
+	lanesNum, hasLanes := link.LanesNum()
+	if !hasLanes || lanesNum < 0 {
+		return make([]int, 0)
+	}
+	return laneIndices(lanesNum, lanesInfo.LanesChange[idx][0], lanesInfo.LanesChange[idx][1])
 }
 
 // Name returns link alias.
@@ -140,7 +157,7 @@ func (link *Link) GeomEuclidean() orb.LineString {
 // The boolean distinguishes an absent reference from geometry ID zero.
 func (link *Link) GeometryID() (gmns.GeometryID, bool) {
 	if link.geometryID == nil {
-		return 0, false
+		return gmns.GeometryID{}, false
 	}
 	return *link.geometryID, true
 }
@@ -160,14 +177,20 @@ func (link *Link) AllowedAgentTypes() []types.AgentType {
 	return link.allowedAgentTypes
 }
 
-// LengthMeters returns length of the underlying geometry [WGS84]. Outputs "-1" if it was not set.
-func (link *Link) LengthMeters() float64 {
-	return link.lengthMeters
+// LengthMeters returns the supplied length in meters and whether it is set.
+func (link *Link) LengthMeters() (float64, bool) {
+	if link.lengthMeters == nil {
+		return 0, false
+	}
+	return *link.lengthMeters, true
 }
 
-// FreeSpeed returns free flow speed for the link. Outputs "-1" if it was not set.
-func (link *Link) FreeSpeed() float64 {
-	return link.freeSpeed
+// FreeSpeed returns the supplied free-flow speed in km/h and whether it is set.
+func (link *Link) FreeSpeed() (float64, bool) {
+	if link.freeSpeed == nil {
+		return 0, false
+	}
+	return *link.freeSpeed, true
 }
 
 // MaxSpeed returns speed restriction the link. Outputs "-1" if it was not set.
@@ -180,12 +203,12 @@ func (link *Link) OSMWay() osm.WayID {
 	return link.osmWayID
 }
 
-// SourceNode returns identifier of source node. Outputs "-1" if it was not set.
+// SourceNode returns identifier of source node. Returns a zero ID when absent.
 func (link *Link) SourceNode() gmns.NodeID {
 	return link.sourceNodeID
 }
 
-// TargetNode returns identifier of target node. Outputs "-1" if it was not set.
+// TargetNode returns identifier of target node. Returns a zero ID when absent.
 func (link *Link) TargetNode() gmns.NodeID {
 	return link.targetNodeID
 }
@@ -200,14 +223,20 @@ func (link *Link) TargetOSMNode() osm.NodeID {
 	return link.targetOsmNodeID
 }
 
-// LanesNum returns number of lanes. Outputs "-1" if it was not set.
-func (link *Link) LanesNum() int {
-	return link.lanesNum
+// LanesNum returns the supplied permanent lane count and whether it is set.
+func (link *Link) LanesNum() (int, bool) {
+	if link.lanesNum == nil {
+		return 0, false
+	}
+	return *link.lanesNum, true
 }
 
-// Capacity returns max capacity of the link. Outputs "-1" if it was not set.
-func (link *Link) Capacity() int {
-	return link.capacity
+// Capacity returns the supplied saturation capacity in PCE/hour/lane and whether it is set.
+func (link *Link) Capacity() (float64, bool) {
+	if link.capacity == nil {
+		return 0, false
+	}
+	return *link.capacity, true
 }
 
 // LinkClass returns link class
@@ -292,14 +321,16 @@ func WithAllowedAgentTypes(allowedAgentTypes []types.AgentType) func(*Link) {
 // WithLengthMeters sets underlying geometry [WGS84] length in meters. Warning: it should be called explicitly after setting geometry [WGS84]
 func WithLengthMeters(lengthMeters float64) func(*Link) {
 	return func(link *Link) {
-		link.lengthMeters = lengthMeters
+		value := lengthMeters
+		link.lengthMeters = &value
 	}
 }
 
-// WithFreeSpeed sets free flow speed for the link
+// WithFreeSpeed stores the supplied free-flow speed in km/h.
 func WithFreeSpeed(freeSpeed float64) func(*Link) {
 	return func(link *Link) {
-		link.freeSpeed = freeSpeed
+		value := freeSpeed
+		link.freeSpeed = &value
 	}
 }
 
@@ -348,14 +379,16 @@ func WithTargetOSMNodeID(osmNodeID osm.NodeID) func(*Link) {
 // WithLanesNum sets number of lanes for the link
 func WithLanesNum(lanesNum int) func(*Link) {
 	return func(link *Link) {
-		link.lanesNum = lanesNum
+		value := lanesNum
+		link.lanesNum = &value
 	}
 }
 
-// WithCapacity sets max capacity for the link
-func WithCapacity(capacity int) func(*Link) {
+// WithCapacity stores the supplied saturation capacity in PCE/hour/lane.
+func WithCapacity(capacity float64) func(*Link) {
 	return func(link *Link) {
-		link.capacity = capacity
+		value := capacity
+		link.capacity = &value
 	}
 }
 
@@ -391,5 +424,232 @@ func WithLinkControlType(controlType types.ControlType) func(*Link) {
 func WithBidirectionalSource(wasBidirectional bool) func(*Link) {
 	return func(link *Link) {
 		link.wasBidirectional = wasBidirectional
+	}
+}
+
+// ParentLink returns the optional associated link ID within the same network.
+// This reference is independent of source provenance across network levels.
+func (link *Link) ParentLink() (gmns.LinkID, bool) {
+	if link.parentLinkID == nil {
+		return gmns.LinkID{}, false
+	}
+	return *link.parentLinkID, true
+}
+
+// WithParentLinkID sets an associated link reference within the same network.
+// Zero and negative IDs are stored as supplied values, not as absence.
+func WithParentLinkID(parentLinkID gmns.LinkID) func(*Link) {
+	return func(link *Link) {
+		value := parentLinkID
+		link.parentLinkID = &value
+	}
+}
+
+// Directed reports whether travel is restricted to source-to-target direction.
+func (link *Link) Directed() bool {
+	return link.directed
+}
+
+// WithDirected sets whether the link is directed. NewLinkFrom defaults to true.
+// It does not change geometry, endpoints or source-road bidirectionality.
+func WithDirected(directed bool) func(*Link) {
+	return func(link *Link) {
+		link.directed = directed
+	}
+}
+
+// RightOfWayWidthMeters returns the supplied width of the entire right-of-way in meters.
+// The width covers both directions and is independent of individual lane widths.
+func (link *Link) RightOfWayWidthMeters() (float64, bool) {
+	if link.rightOfWayWidthMeters == nil {
+		return 0, false
+	}
+	return *link.rightOfWayWidthMeters, true
+}
+
+// WithRightOfWayWidthMeters stores the entire right-of-way width without deriving it from lanes.
+func WithRightOfWayWidthMeters(rightOfWayWidthMeters float64) func(*Link) {
+	return func(link *Link) {
+		value := rightOfWayWidthMeters
+		link.rightOfWayWidthMeters = &value
+	}
+}
+
+// Grade returns the supplied grade in percent and whether it was supplied.
+// Negative values describe downhill travel.
+func (link *Link) Grade() (float64, bool) {
+	if link.gradePercent == nil {
+		return 0, false
+	}
+	return *link.gradePercent, true
+}
+
+// WithGrade stores a grade in percent without calculating it from geometry.
+func WithGrade(gradePercent float64) func(*Link) {
+	return func(link *Link) {
+		value := gradePercent
+		link.gradePercent = &value
+	}
+}
+
+// Jurisdiction returns the supplied owner/operator, or an empty string when absent.
+func (link *Link) Jurisdiction() string {
+	return link.jurisdiction
+}
+
+// WithJurisdiction sets the owner/operator; an empty string clears the value.
+func WithJurisdiction(jurisdiction string) func(*Link) {
+	return func(link *Link) {
+		link.jurisdiction = jurisdiction
+	}
+}
+
+// BikeFacility returns the supplied bicycle infrastructure, or an empty string when absent.
+func (link *Link) BikeFacility() string {
+	return link.bikeFacility
+}
+
+// WithBikeFacility stores the bicycle infrastructure; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithBikeFacility(bikeFacility string) func(*Link) {
+	return func(link *Link) {
+		link.bikeFacility = bikeFacility
+	}
+}
+
+// PedFacility returns the supplied pedestrian infrastructure, or an empty string when absent.
+func (link *Link) PedFacility() string {
+	return link.pedFacility
+}
+
+// WithPedFacility stores the pedestrian infrastructure; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithPedFacility(pedFacility string) func(*Link) {
+	return func(link *Link) {
+		link.pedFacility = pedFacility
+	}
+}
+
+// Parking returns the supplied curbside parking type, or an empty string when absent.
+func (link *Link) Parking() string {
+	return link.parking
+}
+
+// WithParking stores the curbside parking type; an empty string clears the value.
+// Suggested GMNS values are available in gmns/types; custom strings are supported.
+func WithParking(parking string) func(*Link) {
+	return func(link *Link) {
+		link.parking = parking
+	}
+}
+
+// Toll returns the supplied amount in the dataset's currency units and its presence.
+func (link *Link) Toll() (float64, bool) {
+	if link.toll == nil {
+		return 0, false
+	}
+	return *link.toll, true
+}
+
+// WithToll stores an amount without currency conversion or automatic calculation.
+func WithToll(toll float64) func(*Link) {
+	return func(link *Link) {
+		value := toll
+		link.toll = &value
+	}
+}
+
+// FacilityType returns the supplied facility classification, or empty if absent.
+func (link *Link) FacilityType() string {
+	return link.facilityType
+}
+
+// WithFacilityType stores or clears a classification independently of OSM link types.
+func WithFacilityType(facilityType string) func(*Link) {
+	return func(link *Link) {
+		link.facilityType = facilityType
+	}
+}
+
+// AllowedUses returns the supplied comma-separated use references, or empty if absent.
+func (link *Link) AllowedUses() string {
+	return link.allowedUses
+}
+
+// WithAllowedUses stores or clears use references without deriving agent permissions.
+// Definition lookup and syntax validation belong to dataset validation.
+func WithAllowedUses(allowedUses string) func(*Link) {
+	return func(link *Link) {
+		link.allowedUses = allowedUses
+	}
+}
+
+// WithoutToll clears the supplied value, restoring absence.
+func WithoutToll() func(*Link) {
+	return func(link *Link) {
+		link.toll = nil
+	}
+}
+
+// WithoutLengthMeters clears the supplied value, restoring absence.
+func WithoutLengthMeters() func(*Link) {
+	return func(link *Link) {
+		link.lengthMeters = nil
+	}
+}
+
+// WithoutFreeSpeed clears the supplied value, restoring absence.
+func WithoutFreeSpeed() func(*Link) {
+	return func(link *Link) {
+		link.freeSpeed = nil
+	}
+}
+
+// WithoutCapacity clears the supplied value, restoring absence.
+func WithoutCapacity() func(*Link) {
+	return func(link *Link) {
+		link.capacity = nil
+	}
+}
+
+// WithoutLanesNum clears the supplied value, restoring absence.
+func WithoutLanesNum() func(*Link) {
+	return func(link *Link) {
+		link.lanesNum = nil
+	}
+}
+
+// WithoutGrade clears the supplied value, restoring absence.
+func WithoutGrade() func(*Link) {
+	return func(link *Link) {
+		link.gradePercent = nil
+	}
+}
+
+// WithoutRightOfWayWidthMeters clears the supplied value, restoring absence.
+func WithoutRightOfWayWidthMeters() func(*Link) {
+	return func(link *Link) {
+		link.rightOfWayWidthMeters = nil
+	}
+}
+
+// WithoutGeometryID clears the supplied value, restoring absence.
+func WithoutGeometryID() func(*Link) {
+	return func(link *Link) {
+		link.geometryID = nil
+	}
+}
+
+// WithoutDirFlag clears the supplied value, restoring absence.
+func WithoutDirFlag() func(*Link) {
+	return func(link *Link) {
+		link.dirFlag = nil
+	}
+}
+
+// WithoutParentLinkID clears the supplied value, restoring absence.
+func WithoutParentLinkID() func(*Link) {
+	return func(link *Link) {
+		link.parentLinkID = nil
 	}
 }
