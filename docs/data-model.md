@@ -16,6 +16,7 @@ Most of the original network dictionary was gracefully stolen from [OSM2GMNS](ht
 - [Calculated data](#calculated-data)
 - [Relationships](#relationships)
 - [GeoJSON export](#geojson-export)
+- [WKT export](#wkt-export)
 
 ## Identifiers and units
 
@@ -229,3 +230,15 @@ IDs in these relationships use the configured string or integer kind. Source pro
 `Net.GeoFeatureCollection()` exports nodes and links. `MovementsStorage.GeoFeatureCollection()` exports movements separately. Feature geometry contains coordinates; optional numeric/reference properties use `null` when absent, while absent descriptive strings remain empty.
 
 This output is for graph visualization. It does not include configuration, geometry/zone/use catalogs, supplied lane/segment tables or the network's owned movements automatically. It also does not define the CSV columns produced by [osm2gmns](https://github.com/LdDl/osm2gmns).
+
+## WKT export
+
+Use `node.WKT()`, `link.WKT()`, `movement.WKT()`, `geometry.WKT()` or `zone.WKT()` to obtain a string. Nodes produce `POINT`, links/movements/geometry records produce `LINESTRING`, and zone boundaries produce `MULTIPOLYGON`, including holes.
+
+```go
+text := link.WKT()
+```
+
+Encoding preserves the stored two-dimensional WGS84 coordinates and their order. It does not add an SRID prefix, apply `dir_flag`, resolve a shared geometry reference or include the separate altitude attribute. Empty lines and zone boundaries produce `LINESTRING EMPTY` and `MULTIPOLYGON EMPTY`.
+
+`WKT()` serializes without validating or repairing geometry. Use the existing record or dataset validators when validation is needed.
