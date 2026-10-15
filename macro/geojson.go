@@ -33,6 +33,13 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f.Properties["bike_facility"] = link.BikeFacility()
 	f.Properties["ped_facility"] = link.PedFacility()
 	f.Properties["parking"] = link.Parking()
+	f.Properties["facility_type"] = link.FacilityType()
+	f.Properties["allowed_uses"] = link.AllowedUses()
+	toll, hasToll := link.Toll()
+	f.Properties["toll"] = nil
+	if hasToll {
+		f.Properties["toll"] = toll
+	}
 	f.Properties["osm_way_id"] = link.OSMWay()
 	f.Properties["source_osm_node_id"] = link.SourceOSMNode()
 	f.Properties["target_osm_node_id"] = link.TargetOSMNode()

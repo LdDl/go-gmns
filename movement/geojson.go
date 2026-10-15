@@ -40,6 +40,7 @@ func (mvmt *Movement) GeoFeature() *geojson.Feature {
 	f.Properties["from_osm_node_id"] = mvmt.OSMNodeSource()
 	f.Properties["to_osm_node_id"] = mvmt.OSMNodeTarget()
 	f.Properties["type"] = mvmt.Type().String()
+	f.Properties["allowed_uses"] = mvmt.AllowedUses()
 	penalty, hasPenalty := mvmt.Penalty()
 	f.Properties["penalty"] = nil
 	if hasPenalty {

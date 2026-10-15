@@ -9,6 +9,12 @@ import (
 
 // Link represents a microscopic network link (cell)
 type Link struct {
+	lanesNum *int
+
+	toll         *float64
+	facilityType string
+	allowedUses  string
+
 	rightOfWayWidthMeters *float64
 
 	bikeFacility string
@@ -61,23 +67,21 @@ type Link struct {
 // NewLinkFrom creates pointer to the new microscopic Link
 func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options ...func(*Link)) *Link {
 	newLink := &Link{
-		directed:              true,
-		ID:                    id,
-		geom:                  orb.LineString{},
-		geomEuclidean:         orb.LineString{},
-		sourceNodeID:          sourceNodeID,
-		targetNodeID:          targetNodeID,
-		mesoLinkID:            -1,
-		macroLinkID:           -1,
-		macroNodeID:           -1,
-		cellType:              types.CELL_FORWARD,
-		laneID:                0,
-		isFirstMovementCell:   false,
-		movementCompositeType: movement.MOVEMENT_UNDEFINED,
-		additionalTravelCost:  0.0,
-		mesoLinkType:          types.LINK_UNDEFINED,
-		controlType:           types.CONTROL_TYPE_NOT_SIGNAL,
-		allowedAgentTypes:     []types.AgentType{},
+		directed:             true,
+		ID:                   id,
+		geom:                 orb.LineString{},
+		geomEuclidean:        orb.LineString{},
+		sourceNodeID:         sourceNodeID,
+		targetNodeID:         targetNodeID,
+		mesoLinkID:           -1,
+		macroLinkID:          -1,
+		macroNodeID:          -1,
+		cellType:             types.CELL_FORWARD,
+		laneID:               0,
+		isFirstMovementCell:  false,
+		additionalTravelCost: 0.0,
+		mesoLinkType:         types.LINK_UNDEFINED,
+		allowedAgentTypes:    []types.AgentType{},
 	}
 	for _, option := range options {
 		option(newLink)
@@ -472,5 +476,133 @@ func (link *Link) Parking() string {
 func WithParking(parking string) func(*Link) {
 	return func(link *Link) {
 		link.parking = parking
+	}
+}
+
+// Toll returns the supplied amount in the dataset's currency units and its presence.
+func (link *Link) Toll() (float64, bool) {
+	if link.toll == nil {
+		return 0, false
+	}
+	return *link.toll, true
+}
+
+// WithToll stores an amount without currency conversion or automatic calculation.
+func WithToll(toll float64) func(*Link) {
+	return func(link *Link) {
+		value := toll
+		link.toll = &value
+	}
+}
+
+// FacilityType returns the supplied facility classification, or empty if absent.
+func (link *Link) FacilityType() string {
+	return link.facilityType
+}
+
+// WithFacilityType stores or clears a classification independently of OSM link types.
+func WithFacilityType(facilityType string) func(*Link) {
+	return func(link *Link) {
+		link.facilityType = facilityType
+	}
+}
+
+// AllowedUses returns the supplied comma-separated use references, or empty if absent.
+func (link *Link) AllowedUses() string {
+	return link.allowedUses
+}
+
+// WithAllowedUses stores or clears use references without deriving agent permissions.
+// Definition lookup and syntax validation belong to dataset validation.
+func WithAllowedUses(allowedUses string) func(*Link) {
+	return func(link *Link) {
+		link.allowedUses = allowedUses
+	}
+}
+
+// LanesNum returns the supplied motor-vehicle lane count and its presence.
+// The count is independent of the generated cell's LaneID.
+func (link *Link) LanesNum() (int, bool) {
+	if link.lanesNum == nil {
+		return 0, false
+	}
+	return *link.lanesNum, true
+}
+
+// WithLanesNum stores a supplied count without inferring it from a cell's lane index.
+func WithLanesNum(lanesNum int) func(*Link) {
+	return func(link *Link) {
+		value := lanesNum
+		link.lanesNum = &value
+	}
+}
+
+// WithoutToll clears the supplied value, restoring absence.
+func WithoutToll() func(*Link) {
+	return func(link *Link) {
+		link.toll = nil
+	}
+}
+
+// WithoutLengthMeters clears the supplied value, restoring absence.
+func WithoutLengthMeters() func(*Link) {
+	return func(link *Link) {
+		link.lengthMeters = nil
+	}
+}
+
+// WithoutFreeSpeed clears the supplied value, restoring absence.
+func WithoutFreeSpeed() func(*Link) {
+	return func(link *Link) {
+		link.freeSpeed = nil
+	}
+}
+
+// WithoutCapacity clears the supplied value, restoring absence.
+func WithoutCapacity() func(*Link) {
+	return func(link *Link) {
+		link.capacity = nil
+	}
+}
+
+// WithoutLanesNum clears the supplied value, restoring absence.
+func WithoutLanesNum() func(*Link) {
+	return func(link *Link) {
+		link.lanesNum = nil
+	}
+}
+
+// WithoutGrade clears the supplied value, restoring absence.
+func WithoutGrade() func(*Link) {
+	return func(link *Link) {
+		link.gradePercent = nil
+	}
+}
+
+// WithoutRightOfWayWidthMeters clears the supplied value, restoring absence.
+func WithoutRightOfWayWidthMeters() func(*Link) {
+	return func(link *Link) {
+		link.rightOfWayWidthMeters = nil
+	}
+}
+
+// WithoutGeometryID clears the supplied value, restoring absence.
+func WithoutGeometryID() func(*Link) {
+	return func(link *Link) {
+		link.geometryID = nil
+	}
+}
+
+// WithoutDirFlag clears the supplied value, restoring absence.
+func WithoutDirFlag() func(*Link) {
+	return func(link *Link) {
+		link.dirFlag = nil
+	}
+}
+
+// WithoutParentLinkID clears the supplied value, restoring absence.
+func WithoutParentLinkID() func(*Link) {
+	return func(link *Link) {
+		link.parentLinkID = nil
 	}
 }

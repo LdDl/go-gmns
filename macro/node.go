@@ -48,7 +48,6 @@ func NewNodeFrom(id gmns.NodeID, options ...func(*Node)) *Node {
 		osmNodeID:        osm.NodeID(-1),
 		intersectionID:   -1,
 		poiID:            -1,
-		controlType:      types.CONTROL_TYPE_NOT_SIGNAL,
 		boundaryType:     types.BOUNDARY_NONE,
 		activityType:     types.ACTIVITY_NONE,
 		activityLinkType: types.LINK_UNDEFINED,
@@ -283,5 +282,26 @@ func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
 		value := parentNodeID
 		node.parentNodeID = &value
+	}
+}
+
+// WithoutAltitudeMeters clears the supplied value, restoring absence.
+func WithoutAltitudeMeters() func(*Node) {
+	return func(node *Node) {
+		node.altitudeMeters = nil
+	}
+}
+
+// WithoutParentNodeID clears the supplied value, restoring absence.
+func WithoutParentNodeID() func(*Node) {
+	return func(node *Node) {
+		node.parentNodeID = nil
+	}
+}
+
+// WithoutZoneID clears the supplied value, restoring absence.
+func WithoutZoneID() func(*Node) {
+	return func(node *Node) {
+		node.zoneID = nil
 	}
 }

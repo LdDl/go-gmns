@@ -20,6 +20,11 @@ type junctionControlCase struct {
 func TestControlSurvivesGeneration(t *testing.T) {
 	cases := []junctionControlCase{
 		{
+			name:          "custom control",
+			controlType:   types.ControlType("custom control"),
+			needsMovement: true,
+		},
+		{
 			name:        "common",
 			controlType: types.CONTROL_TYPE_NOT_SIGNAL,
 		},
@@ -164,4 +169,19 @@ func controlTestNetwork(t *testing.T, controlType types.ControlType) *macro.Net 
 		network.Links[link.ID] = link
 	}
 	return network
+}
+
+func TestMovementGenerationPreservesAbsentControl(t *testing.T) {
+	network := controlTestNetwork(t, "")
+	movements, err := GenerateMovements(network)
+	assert.NoError(t, err)
+	if err != nil {
+		return
+	}
+	assert.Len(t, movements, 1)
+	for _, mvmt := range movements {
+		assert.Empty(t, mvmt.ControlType())
+		assert.Equal(t, "", mvmt.GeoFeature().Properties["control_type"])
+	}
+	assert.Empty(t, network.Nodes[2].ControlType())
 }

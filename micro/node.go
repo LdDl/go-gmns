@@ -9,6 +9,8 @@ import (
 
 // Node represents a microscopic network node (cell vertex)
 type Node struct {
+	controlType types.ControlType
+
 	altitudeMeters *float64
 
 	parentNodeID *gmns.NodeID
@@ -279,5 +281,38 @@ func WithParentNodeID(parentNodeID gmns.NodeID) func(*Node) {
 	return func(node *Node) {
 		value := parentNodeID
 		node.parentNodeID = &value
+	}
+}
+
+// ControlType returns the supplied control category, or empty if absent.
+func (node *Node) ControlType() types.ControlType {
+	return node.controlType
+}
+
+// WithNodeControlType stores or clears a supplied control category.
+func WithNodeControlType(controlType types.ControlType) func(*Node) {
+	return func(node *Node) {
+		node.controlType = controlType
+	}
+}
+
+// WithoutAltitudeMeters clears the supplied value, restoring absence.
+func WithoutAltitudeMeters() func(*Node) {
+	return func(node *Node) {
+		node.altitudeMeters = nil
+	}
+}
+
+// WithoutParentNodeID clears the supplied value, restoring absence.
+func WithoutParentNodeID() func(*Node) {
+	return func(node *Node) {
+		node.parentNodeID = nil
+	}
+}
+
+// WithoutZoneID clears the supplied value, restoring absence.
+func WithoutZoneID() func(*Node) {
+	return func(node *Node) {
+		node.zoneID = nil
 	}
 }

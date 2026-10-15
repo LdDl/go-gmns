@@ -149,6 +149,10 @@ Altitude and right-of-way width are stored in meters and are not inferred by gen
 
 Node zone getters `Zone()`, `MacroZone()` and `ZoneID()` now return `(gmns.NodeID, bool)`. Omit the zone option for absence; `-1` is a supplied ID. Generators preserve presence at road endpoints and leave intermediate nodes unassigned. Zone-table validation and converter CSV migration remain pending.
 
+Optional numeric attributes and references can be cleared with matching `Without…()` options, for example `macro.WithoutCapacity()(link)`. Empty strings clear optional text and categories. `ControlType`, `MovementType` and `MovementCompositeType` now have string underlying types; numeric casts/persistence must migrate. Existing constants retain their text, including explicit `common` and `undefined`; unset controls and connector codes are empty. Custom controls retain junctions without interpreting their rules.
+
+`FacilityType` and `AllowedUses` preserve supplied text independently of OSM classifications and generator agent types. Toll amounts use the dataset's currency; currency configuration, use definitions, validation and propagation of these new attributes remain pending.
+
 ### Macroscopic network
 
 The macroscopic network represents road segments at the highest level of abstraction, where each link connects two nodes (intersections or points where road topology changes).
@@ -160,9 +164,9 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `id` | int64 | Unique node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `osm_node_id` | int64 | Original OpenStreetMap node ID |
-| `control_type` | string | Traffic control: `no_control`, `yield`, `stop`, `stop_2_way`, `stop_4_way`, `signal_with_RTOR`, `signal`; existing default is `common` |
 | `boundary_type` | string | Boundary classification: `none`, `income_only`, `outcome_only`, `income_outcome` |
 | `activity_type` | string | Activity type: `none`, `poi`, `link` |
 | `activity_link_type` | string | If activity_type=link, the predominant link type at this node |
@@ -189,6 +193,8 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
 | `parking` | string | Curbside parking type; empty if not supplied |
+| `facility_type` | string | Supplied facility classification; empty if not supplied |
+| `toll` | optional float64 | Supplied amount in dataset currency units (`null` in GeoJSON if not set) |
 | `osm_way_id` | int64 | Original OpenStreetMap way ID |
 | `source_osm_node_id` | int64 | Source OSM node ID |
 | `target_osm_node_id` | int64 | Target OSM node ID |
@@ -197,6 +203,7 @@ The macroscopic network represents road segments at the highest level of abstrac
 | `link_type` | string | Road type: `motorway`, `trunk`, `primary`, `secondary`, `tertiary`, `residential`, `service`, `connector`, `cycleway`, `footway`, `track`, `undefined` |
 | `control_type` | string | Traffic control at downstream end |
 | `allowed_agent_types` | string | Comma-separated list of allowed agents: `auto`, `bike`, `walk`, `transit`, `rail`, `truck` |
+| `allowed_uses` | string | Supplied comma-separated use/group references; empty if not supplied |
 | `was_bidirectional` | bool | Whether original OSM way was bidirectional |
 | `lanes` | optional int | Permanent motor-vehicle lane count in this direction (`null` in GeoJSON if not set) |
 | `max_speed` | float64 | Maximum speed limit (km/h) |
@@ -212,7 +219,7 @@ Link `Capacity()` and `FreeSpeed()` now return `(float64, bool)`, and `WithCapac
 
 `LengthMeters()` now returns `(float64, bool)` and `NewLanesInfo` returns `(LanesInfo, error)`. Zero remains a supplied length; lane preparation and meso generation require positive finite macro lengths, while micro cell generation requires positive finite lengths on its meso road segments. Export does not calculate missing lengths.
 
-Macro/meso `LanesNum()` now returns `(int, bool)`; `WithLanesNum(int)` is unchanged. Omit the option for absence; zero is a supplied count. `NewLanesInfo` requires a nonnegative count. Movement and meso generation currently require positive counts and prepared lane data; micro requires supplied nonnegative counts where consumed and supports prepared zero-lane bike/walk roads with `SeparateBikeWalk`. The micro lane index is separate from a lane count.
+Macro/meso `LanesNum()` now returns `(int, bool)`; `WithLanesNum(int)` is unchanged. Omit the option for absence; zero is a supplied count. `NewLanesInfo` requires a nonnegative count. Movement and meso generation currently require positive counts and prepared lane data; micro requires supplied nonnegative counts where consumed and supports prepared zero-lane bike/walk roads with `SeparateBikeWalk`. Micro also stores an optional count independently of its lane index; the current generator leaves this new attribute absent.
 
 Bicycle/pedestrian facilities and parking describe infrastructure independently of allowed agents. Suggested category constants are available in `gmns/types`; custom strings are supported. Empty values, `none` and `unknown` remain distinct. See the note in the micro link section for more details about thouse specific fields.
 
@@ -237,7 +244,7 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 | `lanes_num` | int | Number of lanes for this movement |
 | `from_osm_node_id` | int64 | Source OSM node of incoming link |
 | `to_osm_node_id` | int64 | Target OSM node of outgoing link |
-| `type` | string | Movement type: `thru`, `left`, `right`, `uturn`, `merge`, `diverge`; `undefined` when unspecified |
+| `type` | string | Movement type: `thru`, `left`, `right`, `uturn`, `merge`, `diverge`; empty if absent; explicit `undefined` remains distinct |
 | `penalty` | optional float64 | Turn penalty in seconds (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity for the whole movement in PCE/hour (`null` in GeoJSON if not set) |
 | `control_type` | string | Traffic control type |
@@ -245,11 +252,12 @@ Movements represent allowed turn maneuvers at intersections, connecting incoming
 | `volume` | int | Traffic volume (-1 if not set) |
 | `free_speed` | int | Free-flow speed (-1 if not set) |
 | `allowed_agent_types` | string | Comma-separated allowed agents |
+| `allowed_uses` | string | Supplied comma-separated use/group references; empty if not supplied |
 | `geom` | WKT | LineString geometry connecting link endpoints |
 
 #### Movement composite types
 
-The composite type combines incoming direction, outgoing direction, and turn direction:
+Movement codes can also store supplied numbered or diagonal codes such as `NER2`. The table lists legacy generator constants; storing a code does not validate its standard syntax:
 
 | Code | From | Turn | Description |
 |------|------|------|-------------|
@@ -281,6 +289,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `id` | int64 | Unique meso node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
 | `macro_node_id` | int64 | Associated macro node ID (-1 if none) |
@@ -307,6 +316,8 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
 | `parking` | string | Curbside parking type; empty if not supplied |
+| `facility_type` | string | Supplied facility classification; empty if not supplied |
+| `toll` | optional float64 | Supplied amount in dataset currency units (`null` in GeoJSON if not set) |
 | `macro_node_id` | int64 | Associated macro node (-1 for road segments) |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `segment_idx` | int | Segment index within macro link |
@@ -324,6 +335,7 @@ The mesoscopic network provides lane-level representation with offset geometries
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
 | `allowed_agent_types` | string | Comma-separated allowed agents |
+| `allowed_uses` | string | Supplied comma-separated use/group references; empty if not supplied |
 | `length_meters` | optional float64 | Supplied link length in meters (`null` in GeoJSON if not set) |
 | `geom` | WKT | Offset LineString geometry |
 
@@ -338,6 +350,7 @@ The microscopic network provides cell-based representation for detailed simulati
 | `id` | int64 | Unique micro node identifier |
 | `parent_node_id` | optional int64 | Associated node in the same network (`null` in GeoJSON if not set) |
 | `node_type` | string | What the node represents; empty if not supplied |
+| `control_type` | string | Supplied control category, including custom values; empty if not supplied |
 | `z_coord` | optional float64 | Supplied altitude in meters (`null` in GeoJSON if not set) |
 | `name` | string | Supplied node name; empty if not supplied |
 | `meso_link_id` | int64 | Associated meso link ID |
@@ -368,17 +381,21 @@ The microscopic network provides cell-based representation for detailed simulati
 | `bike_facility` | string | Bicycle infrastructure type; empty if not supplied |
 | `ped_facility` | string | Pedestrian infrastructure type; empty if not supplied |
 | `parking` | string | Curbside parking type; empty if not supplied |
+| `facility_type` | string | Supplied facility classification; empty if not supplied |
+| `toll` | optional float64 | Supplied amount in dataset currency units (`null` in GeoJSON if not set) |
 | `meso_link_id` | int64 | Associated meso link ID |
 | `macro_link_id` | int64 | Associated macro link ID |
 | `macro_node_id` | int64 | Associated macro node (-1 for road cells) |
 | `cell_type` | string | Cell type: `forward`, `lane_change_left`, `lane_change_right` |
 | `lane_id` | int | Lane index (for forward cells) |
+| `lanes` | optional int | Supplied motor-vehicle lane count, independent of `lane_id`; left absent by the current generator |
 | `is_first_movement_cell` | bool | Whether this is first cell of a movement |
 | `movement_composite_type` | string | Movement type for connection cells |
 | `additional_travel_cost` | float64 | Extra cost for lane changes |
 | `meso_link_type` | string | Link type from meso network |
 | `control_type` | string | Traffic control type |
 | `allowed_agent_types` | string | Comma-separated allowed agents |
+| `allowed_uses` | string | Supplied comma-separated use/group references; empty if not supplied |
 | `free_speed` | optional float64 | Free-flow speed in km/h (`null` in GeoJSON if not set) |
 | `capacity` | optional float64 | Saturation capacity in PCE/hour/lane (`null` in GeoJSON if not set) |
 | `length_meters` | optional float64 | Cell length in meters (`null` in GeoJSON if not set) |

@@ -34,11 +34,23 @@ func (link *Link) GeoFeature() *geojson.Feature {
 	f.Properties["bike_facility"] = link.BikeFacility()
 	f.Properties["ped_facility"] = link.PedFacility()
 	f.Properties["parking"] = link.Parking()
+	f.Properties["facility_type"] = link.FacilityType()
+	f.Properties["allowed_uses"] = link.AllowedUses()
+	toll, hasToll := link.Toll()
+	f.Properties["toll"] = nil
+	if hasToll {
+		f.Properties["toll"] = toll
+	}
 	f.Properties["meso_link_id"] = link.MesoLink()
 	f.Properties["macro_link_id"] = link.MacroLink()
 	f.Properties["macro_node_id"] = link.MacroNode()
 	f.Properties["cell_type"] = link.CellType().String()
 	f.Properties["lane_id"] = link.LaneID()
+	lanesNum, hasLanes := link.LanesNum()
+	f.Properties["lanes"] = nil
+	if hasLanes {
+		f.Properties["lanes"] = lanesNum
+	}
 	f.Properties["is_first_movement_cell"] = link.IsFirstMovementCell()
 	f.Properties["movement_composite_type"] = link.MovementCompositeType().String()
 	f.Properties["additional_travel_cost"] = link.AdditionalTravelCost()
@@ -77,6 +89,7 @@ func (node *Node) GeoFeature() *geojson.Feature {
 		f.Properties["z_coord"] = altitudeMeters
 	}
 	f.Properties["node_type"] = node.NodeType()
+	f.Properties["control_type"] = node.ControlType().String()
 	f.Properties["name"] = node.Name()
 	f.ID = node.ID
 	f.Properties["id"] = node.ID

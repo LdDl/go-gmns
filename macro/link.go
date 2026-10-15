@@ -9,6 +9,10 @@ import (
 
 // Link representation of an edge in a macroscopic graph
 type Link struct {
+	toll         *float64
+	facilityType string
+	allowedUses  string
+
 	rightOfWayWidthMeters *float64
 
 	bikeFacility string
@@ -66,7 +70,6 @@ func NewLinkFrom(id gmns.LinkID, sourceNodeID, targetNodeID gmns.NodeID, options
 		linkClass:          types.LINK_CLASS_UNDEFINED,
 		linkType:           types.LINK_UNDEFINED,
 		linkConnectionType: types.NOT_A_LINK,
-		controlType:        types.CONTROL_TYPE_NOT_SIGNAL,
 		wasBidirectional:   false,
 	}
 	for _, option := range options {
@@ -537,5 +540,116 @@ func (link *Link) Parking() string {
 func WithParking(parking string) func(*Link) {
 	return func(link *Link) {
 		link.parking = parking
+	}
+}
+
+// Toll returns the supplied amount in the dataset's currency units and its presence.
+func (link *Link) Toll() (float64, bool) {
+	if link.toll == nil {
+		return 0, false
+	}
+	return *link.toll, true
+}
+
+// WithToll stores an amount without currency conversion or automatic calculation.
+func WithToll(toll float64) func(*Link) {
+	return func(link *Link) {
+		value := toll
+		link.toll = &value
+	}
+}
+
+// FacilityType returns the supplied facility classification, or empty if absent.
+func (link *Link) FacilityType() string {
+	return link.facilityType
+}
+
+// WithFacilityType stores or clears a classification independently of OSM link types.
+func WithFacilityType(facilityType string) func(*Link) {
+	return func(link *Link) {
+		link.facilityType = facilityType
+	}
+}
+
+// AllowedUses returns the supplied comma-separated use references, or empty if absent.
+func (link *Link) AllowedUses() string {
+	return link.allowedUses
+}
+
+// WithAllowedUses stores or clears use references without deriving agent permissions.
+// Definition lookup and syntax validation belong to dataset validation.
+func WithAllowedUses(allowedUses string) func(*Link) {
+	return func(link *Link) {
+		link.allowedUses = allowedUses
+	}
+}
+
+// WithoutToll clears the supplied value, restoring absence.
+func WithoutToll() func(*Link) {
+	return func(link *Link) {
+		link.toll = nil
+	}
+}
+
+// WithoutLengthMeters clears the supplied value, restoring absence.
+func WithoutLengthMeters() func(*Link) {
+	return func(link *Link) {
+		link.lengthMeters = nil
+	}
+}
+
+// WithoutFreeSpeed clears the supplied value, restoring absence.
+func WithoutFreeSpeed() func(*Link) {
+	return func(link *Link) {
+		link.freeSpeed = nil
+	}
+}
+
+// WithoutCapacity clears the supplied value, restoring absence.
+func WithoutCapacity() func(*Link) {
+	return func(link *Link) {
+		link.capacity = nil
+	}
+}
+
+// WithoutLanesNum clears the supplied value, restoring absence.
+func WithoutLanesNum() func(*Link) {
+	return func(link *Link) {
+		link.lanesNum = nil
+	}
+}
+
+// WithoutGrade clears the supplied value, restoring absence.
+func WithoutGrade() func(*Link) {
+	return func(link *Link) {
+		link.gradePercent = nil
+	}
+}
+
+// WithoutRightOfWayWidthMeters clears the supplied value, restoring absence.
+func WithoutRightOfWayWidthMeters() func(*Link) {
+	return func(link *Link) {
+		link.rightOfWayWidthMeters = nil
+	}
+}
+
+// WithoutGeometryID clears the supplied value, restoring absence.
+func WithoutGeometryID() func(*Link) {
+	return func(link *Link) {
+		link.geometryID = nil
+	}
+}
+
+// WithoutDirFlag clears the supplied value, restoring absence.
+func WithoutDirFlag() func(*Link) {
+	return func(link *Link) {
+		link.dirFlag = nil
+	}
+}
+
+// WithoutParentLinkID clears the supplied value, restoring absence.
+func WithoutParentLinkID() func(*Link) {
+	return func(link *Link) {
+		link.parentLinkID = nil
 	}
 }

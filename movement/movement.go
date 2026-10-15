@@ -41,6 +41,8 @@ func NewMovementsStorage() MovementsStorage {
 
 // Movement represents maneuver between some road parts
 type Movement struct {
+	allowedUses string
+
 	name              string
 	geom              orb.LineString
 	geomEuclidean     orb.LineString
@@ -88,7 +90,6 @@ func NewMovement(id gmns.MovementID, macroNodeID gmns.NodeID, incomeMacroLinkID,
 		targetOsmNodeID:       osm.NodeID(-1),
 		mType:                 mvmtType,
 		mTextID:               mvmtTxtID,
-		controlType:           types.CONTROL_TYPE_NOT_SIGNAL,
 		lanesNum:              -1,
 	}
 	for _, option := range options {
@@ -415,5 +416,60 @@ func WithControlType(controlType types.ControlType) func(*Movement) {
 func WithLanesNum(lanesNum int) func(*Movement) {
 	return func(mvmt *Movement) {
 		mvmt.lanesNum = lanesNum
+	}
+}
+
+// AllowedUses returns the supplied comma-separated use references, or empty if absent.
+func (mvmt *Movement) AllowedUses() string {
+	return mvmt.allowedUses
+}
+
+// WithAllowedUses stores or clears use references independently of agent types.
+// Definition lookup and syntax validation belong to dataset validation.
+func WithAllowedUses(allowedUses string) func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.allowedUses = allowedUses
+	}
+}
+
+// WithoutPenalty clears the supplied value, restoring absence.
+func WithoutPenalty() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.penaltySeconds = nil
+	}
+}
+
+// WithoutCapacity clears the supplied value, restoring absence.
+func WithoutCapacity() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.capacityPCEPerHour = nil
+	}
+}
+
+// WithoutIncomeLaneStart clears the supplied value, restoring absence.
+func WithoutIncomeLaneStart() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.incomeLaneStart = nil
+	}
+}
+
+// WithoutIncomeLaneEnd clears the supplied value, restoring absence.
+func WithoutIncomeLaneEnd() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.incomeLaneEnd = nil
+	}
+}
+
+// WithoutOutcomeLaneStart clears the supplied value, restoring absence.
+func WithoutOutcomeLaneStart() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.outcomeLaneStart = nil
+	}
+}
+
+// WithoutOutcomeLaneEnd clears the supplied value, restoring absence.
+func WithoutOutcomeLaneEnd() func(*Movement) {
+	return func(mvmt *Movement) {
+		mvmt.outcomeLaneEnd = nil
 	}
 }
