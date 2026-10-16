@@ -66,6 +66,10 @@ type macroLinkProcessing struct {
 }
 
 func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
+	return generateMesoscopic(macroNet, movements, false, CUT_LENGTHS)
+}
+
+func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage, preserveConnectors bool, cutLengths [100]float64) (*meso.Net, error) {
 	err := requireDirectedMacroLinks(macroNet)
 	if err != nil {
 		return nil, err
@@ -226,6 +230,10 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 
 	for _, nodeID := range sortedMacroNodeIDsMain {
 		macroNode := macroNet.Nodes[nodeID]
+		// Authored lane scopes require explicit connectors instead of merged road endpoints.
+		if preserveConnectors {
+			continue
+		}
 		// Preserve explicit junctions with signals, stop or yield control.
 		if macroNode.ControlType().HasControl() {
 			continue
@@ -351,7 +359,7 @@ func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	st = time.Now()
 	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
-		macroLinkProcess.updateCutLength()
+		macroLinkProcess.updateCutLength(cutLengths)
 		macroLinkProcess.performCut()
 	}
 	if VERBOSE {
@@ -477,7 +485,7 @@ func sortedLinkIDsGeneric(m map[gmns.LinkID]struct{}) []gmns.LinkID {
 	return keys
 }
 
-func (macroLinkProcess *macroLinkProcessing) updateCutLength() {
+func (macroLinkProcess *macroLinkProcessing) updateCutLength(cutLengths [100]float64) {
 	laneChangePoints := macroLinkProcess.lanesInfo.LanesChangePoints
 	// Dodge potential change of number of lanes on two ends of the macroscopic link
 	// @todo: Bound check for LanesChangePoints
@@ -498,7 +506,7 @@ func (macroLinkProcess *macroLinkProcessing) updateCutLength() {
 		cutIdx := 0
 		cutPlaceFound := false
 		for i := macroLinkProcess.lanesInfo.LanesList[len(macroLinkProcess.lanesInfo.LanesList)-1]; i >= 0; i-- {
-			if macroLinkProcess.lengthMetersOffset > math.Min(downstreamMaxCut, CUT_LENGTHS[i])+SHORTCUT_LENGTH+MIN_CUT_LENGTH {
+			if macroLinkProcess.lengthMetersOffset > math.Min(downstreamMaxCut, cutLengths[i])+SHORTCUT_LENGTH+MIN_CUT_LENGTH {
 				cutIdx = i
 				cutPlaceFound = true
 				break
@@ -506,9 +514,9 @@ func (macroLinkProcess *macroLinkProcessing) updateCutLength() {
 		}
 		if cutPlaceFound {
 			macroLinkProcess.upstreamCutLen = SHORTCUT_LENGTH
-			macroLinkProcess.downstreamCutLen = math.Min(downstreamMaxCut, CUT_LENGTHS[cutIdx])
+			macroLinkProcess.downstreamCutLen = math.Min(downstreamMaxCut, cutLengths[cutIdx])
 		} else {
-			downStreamCut := math.Min(downstreamMaxCut, CUT_LENGTHS[0])
+			downStreamCut := math.Min(downstreamMaxCut, cutLengths[0])
 			totalLen := downStreamCut + SHORTCUT_LENGTH + MIN_CUT_LENGTH
 			macroLinkProcess.upstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * SHORTCUT_LENGTH
 			macroLinkProcess.downstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * downStreamCut
@@ -517,37 +525,37 @@ func (macroLinkProcess *macroLinkProcessing) updateCutLength() {
 		cutIdx := 0
 		cutPlaceFound := false
 		for i := macroLinkProcess.lanesInfo.LanesList[len(macroLinkProcess.lanesInfo.LanesList)-1]; i >= 0; i-- {
-			if macroLinkProcess.lengthMetersOffset > math.Min(upstreamMaxCut, CUT_LENGTHS[i])+SHORTCUT_LENGTH+MIN_CUT_LENGTH {
+			if macroLinkProcess.lengthMetersOffset > math.Min(upstreamMaxCut, cutLengths[i])+SHORTCUT_LENGTH+MIN_CUT_LENGTH {
 				cutIdx = i
 				cutPlaceFound = true
 				break
 			}
 		}
 		if cutPlaceFound {
-			macroLinkProcess.upstreamCutLen = math.Min(upstreamMaxCut, CUT_LENGTHS[cutIdx])
+			macroLinkProcess.upstreamCutLen = math.Min(upstreamMaxCut, cutLengths[cutIdx])
 			macroLinkProcess.downstreamCutLen = SHORTCUT_LENGTH
 		} else {
-			upStreamCut := math.Min(upstreamMaxCut, CUT_LENGTHS[0])
+			upStreamCut := math.Min(upstreamMaxCut, cutLengths[0])
 			totalLen := upStreamCut + SHORTCUT_LENGTH + MIN_CUT_LENGTH
-			macroLinkProcess.upstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * CUT_LENGTHS[0]
+			macroLinkProcess.upstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * cutLengths[0]
 			macroLinkProcess.downstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * SHORTCUT_LENGTH
 		}
 	} else {
 		cutIdx := 0
 		cutPlaceFound := false
 		for i := macroLinkProcess.lanesInfo.LanesList[len(macroLinkProcess.lanesInfo.LanesList)-1]; i >= 0; i-- {
-			if macroLinkProcess.lengthMetersOffset > math.Min(upstreamMaxCut, CUT_LENGTHS[i])+math.Min(downstreamMaxCut, CUT_LENGTHS[i])+MIN_CUT_LENGTH {
+			if macroLinkProcess.lengthMetersOffset > math.Min(upstreamMaxCut, cutLengths[i])+math.Min(downstreamMaxCut, cutLengths[i])+MIN_CUT_LENGTH {
 				cutIdx = i
 				cutPlaceFound = true
 				break
 			}
 		}
 		if cutPlaceFound {
-			macroLinkProcess.upstreamCutLen = math.Min(upstreamMaxCut, CUT_LENGTHS[cutIdx])
-			macroLinkProcess.downstreamCutLen = math.Min(downstreamMaxCut, CUT_LENGTHS[cutIdx])
+			macroLinkProcess.upstreamCutLen = math.Min(upstreamMaxCut, cutLengths[cutIdx])
+			macroLinkProcess.downstreamCutLen = math.Min(downstreamMaxCut, cutLengths[cutIdx])
 		} else {
-			upStreamCut := math.Min(upstreamMaxCut, CUT_LENGTHS[0])
-			downStreamCut := math.Min(downstreamMaxCut, CUT_LENGTHS[0])
+			upStreamCut := math.Min(upstreamMaxCut, cutLengths[0])
+			downStreamCut := math.Min(downstreamMaxCut, cutLengths[0])
 			totalLen := downStreamCut + upStreamCut + MIN_CUT_LENGTH
 			macroLinkProcess.upstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * upStreamCut
 			macroLinkProcess.downstreamCutLen = (macroLinkProcess.lengthMetersOffset / totalLen) * downStreamCut
