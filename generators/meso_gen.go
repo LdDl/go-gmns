@@ -187,6 +187,12 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		macroLinkProcess := needToObserve[macroLinkID]
 		// Re-calcuate length for offset geometry and round to 2 decimal places
 		macroLinkProcess.lengthMetersOffset = math.Round(geo.LengthHaversine(macroLinkProcess.offsetGeom)*100.0) / 100.0
+		if options.preserveConnectors {
+			macroLinkProcess.lengthMetersOffset = geo.LengthHaversine(macroLinkProcess.offsetGeom)
+			if !gmns.Finite(macroLinkProcess.lengthMetersOffset) || macroLinkProcess.lengthMetersOffset <= 0 {
+				return nil, fmt.Errorf("link %v: degenerate offset geometry", macroLinkID)
+			}
+		}
 		macroLink, ok := macroNet.Links[macroLinkID]
 		if !ok {
 			return nil, errors.Wrapf(macro.ErrLinkNotFound, "Offset Link ID: %v", macroLinkID)
@@ -373,7 +379,14 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 			macroLinkProcess.upstreamCutLen = math.Min(macroLinkProcess.upstreamCutLen, (points[1]-points[0])/2)
 			macroLinkProcess.downstreamCutLen = math.Min(macroLinkProcess.downstreamCutLen, (points[len(points)-1]-points[len(points)-2])/2)
 		}
-		macroLinkProcess.performCut()
+		if options.preserveConnectors {
+			err = macroLinkProcess.performPreparationCut()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			macroLinkProcess.performCut()
+		}
 	}
 	if VERBOSE {
 		log.Info().Str("scope", "gen_meso").Float64("elapsed", time.Since(st).Seconds()).Msg("Done cuts. Build mesoscopic links")

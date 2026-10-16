@@ -47,7 +47,7 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 		option(&options)
 	}
 	if !options.uniformLaneLayout && !options.detailedLaneLayout {
-		return nil, fmt.Errorf("meso preparation requires an explicit lane layout: use WithUniformLaneLayout for constant supplied counts")
+		return nil, fmt.Errorf("meso preparation requires an explicit lane layout: use WithUniformLaneLayout or WithDetailedLaneLayout")
 	}
 	if options.defaultLanes != nil && (*options.defaultLanes <= 0 || *options.defaultLanes >= len(CUT_LENGTHS)) {
 		return nil, fmt.Errorf("default meso lanes must be in 1..%d, got %d", len(CUT_LENGTHS)-1, *options.defaultLanes)
@@ -71,7 +71,7 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 		return nil, err
 	}
 	for _, record := range source.MovementRecords() {
-		err = prepareMovementLanes(working, record, layout, &options)
+		err = prepareMovementLanes(record, layout, &options)
 		if err != nil {
 			return nil, err
 		}
@@ -296,7 +296,7 @@ func prepareMacroLink(source *macro.Net, link *macro.Link, options *mesoPreparat
 	return copyLink, nil
 }
 
-func prepareMovementLanes(net *macro.Net, record *movement.Movement, layout preparationLayout, options *mesoPreparationOptions) error {
+func prepareMovementLanes(record *movement.Movement, layout preparationLayout, options *mesoPreparationOptions) error {
 	inStart, hasInStart := record.IncomeLaneStart()
 	inEnd, hasInEnd := record.IncomeLaneEnd()
 	outStart, hasOutStart := record.OutcomeLaneStart()

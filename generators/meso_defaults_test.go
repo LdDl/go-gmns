@@ -72,7 +72,7 @@ func TestDefaultLanesDoNotRepairInvalidValuesOrReferences(t *testing.T) {
 	macro.WithoutLanesNum()(source.Links[identifier])
 	result, err := PrepareMesoscopic(source, WithUniformLaneLayout(), WithDefaultMesoLanes(2))
 	assert.Nil(t, result)
-	assertPreparationError(t, err, "movement 49: inbound lane range 3..3 is outside link 13 lanes 1..2")
+	assertPreparationError(t, err, "movement 49: inbound lane range 3..3 is outside link 13 endpoint lanes [1 2]")
 	_, present := source.Links[identifier].LanesNum()
 	assert.False(t, present)
 	for _, count := range []int{-1, 0, 100} {

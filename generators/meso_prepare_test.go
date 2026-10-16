@@ -169,7 +169,7 @@ func TestPrepareMesoscopicFailurePreservesInput(t *testing.T) {
 		{
 			name:    "lane drop unresolved",
 			option:  macro.WithLanesNum(2),
-			message: "movement 49: inbound lane range 3..3 is outside link 13 lanes 1..2",
+			message: "movement 49: inbound lane range 3..3 is outside link 13 endpoint lanes [1 2]",
 		},
 		{
 			name:    "undirected",

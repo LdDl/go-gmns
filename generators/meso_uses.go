@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/LdDl/go-gmns/macro"
-	"github.com/LdDl/go-gmns/meso"
 	"github.com/LdDl/go-gmns/movement"
 )
 
@@ -33,15 +32,6 @@ func expandedUses(net *macro.Net, value string) (map[string]bool, error) {
 		}
 	}
 	return result, nil
-}
-
-func movementAllowedUses(net *macro.Net, record *movement.Movement) (string, error) {
-	values := []string{
-		net.Links[record.IncomeLink()].AllowedUses(),
-		record.AllowedUses(),
-		net.Links[record.OutcomeLink()].AllowedUses(),
-	}
-	return intersectMovementUses(net, record, values)
 }
 
 func intersectMovementUses(net *macro.Net, record *movement.Movement, values []string) (string, error) {
@@ -76,24 +66,4 @@ func intersectMovementUses(net *macro.Net, record *movement.Movement, values []s
 	}
 	sort.Strings(names)
 	return strings.Join(names, ","), nil
-}
-
-func applyPreparedUses(source *macro.Net, target *meso.Net) error {
-	for _, id := range sortedMesoLinkIDs(target.Links) {
-		link := target.Links[id]
-		if !link.MacroLink().IsZero() {
-			meso.WithAllowedUses(source.Links[link.MacroLink()].AllowedUses())(link)
-			continue
-		}
-		record, exists := source.Movement(link.Movement())
-		if !exists {
-			return fmt.Errorf("meso link %v: source movement %v not found", id, link.Movement())
-		}
-		uses, err := movementAllowedUses(source, record)
-		if err != nil {
-			return err
-		}
-		meso.WithAllowedUses(uses)(link)
-	}
-	return nil
 }
