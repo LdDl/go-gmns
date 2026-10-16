@@ -94,9 +94,10 @@ flowchart LR
 |---|---|---|
 | Macro, meso and micro networks | Storage and validation | Nodes, links, attributes and references |
 | Dataset records | Storage and validation | Configuration, geometries, zones, use definitions and groups |
-| Lane, segment and segment-lane records | Storage and validation | Supplied records; current generators do not transform them |
+| Lane, segment and segment-lane records | Storage, validation and supported meso preparation | Nonoverlapping segments and edge lane additions/drops |
 | Movements | Storage at each network level; generation from macro | Generated meso/micro connectors retain source movement provenance |
 | Meso and micro generation | Available | Requires prepared topology, geometry and lane data |
+| Meso preparation from standard records | `generators.PrepareMesoscopic` | Rebuilds internal data; preserves source records and returns lineage |
 | GeoJSON | Nodes, links and separately exported movements | Visualization output; does not serialize the complete dataset |
 | WKT | `WKT()` on nodes, links, movements, geometries and zones | Two-dimensional geometry as a string |
 | Geometry utilities | Available | Coordinate conversion, offsets and distances |
@@ -116,6 +117,7 @@ Time-of-day, signal timing, location and curb records are outside the supported 
 | [Data model](docs/data-model.md) | Dataset ownership, attributes, references, calculated data, GeoJSON and WKT |
 | [Types and constants](docs/types.md) | Built-in values for control, node, movement, road, agent, cell and infrastructure categories |
 | [Generation](docs/generation.md) | Input preparation, generator calls, behavior and options |
+| [Meso preparation](docs/meso-preparation.md) | Standard macro inputs, lane policies, results and supported detail |
 | [Basic example](cmd/examples/basic/README.md) | A runnable network construction and GeoJSON export example |
 
 ## References
