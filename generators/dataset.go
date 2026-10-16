@@ -13,6 +13,10 @@ import (
 var ErrUnsupportedGenerationInput = fmt.Errorf("unsupported generation input")
 
 func requireSupportedMacroDataset(net *macro.Net) error {
+	return requireSupportedMacroDatasetUses(net, false)
+}
+
+func requireSupportedMacroDatasetUses(net *macro.Net, standardUses bool) error {
 	if net.HasDetailedRecords() {
 		return fmt.Errorf("%w: supplied lane/segment records require a dedicated generator", ErrUnsupportedGenerationInput)
 	}
@@ -23,7 +27,7 @@ func requireSupportedMacroDataset(net *macro.Net) error {
 		}
 	}
 	for _, link := range macroLinksToSlice(net.Links) {
-		if link.AllowedUses() != "" {
+		if link.AllowedUses() != "" && !standardUses {
 			return fmt.Errorf("%w: allowed_uses permission mapping is not implemented", ErrUnsupportedGenerationInput)
 		}
 		toll, present := link.Toll()

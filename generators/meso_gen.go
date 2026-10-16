@@ -65,11 +65,18 @@ type macroLinkProcessing struct {
 	targetMacroNodeID gmns.NodeID
 }
 
-func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
-	return generateMesoscopic(macroNet, movements, false, CUT_LENGTHS)
+type mesoGenerationOptions struct {
+	preserveConnectors bool
+	standardUses       bool
+	cutLengths         [100]float64
 }
 
-func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage, preserveConnectors bool, cutLengths [100]float64) (*meso.Net, error) {
+func GenerateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage) (*meso.Net, error) {
+	options := mesoGenerationOptions{cutLengths: CUT_LENGTHS}
+	return generateMesoscopic(macroNet, movements, &options)
+}
+
+func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage, options *mesoGenerationOptions) (*meso.Net, error) {
 	err := requireDirectedMacroLinks(macroNet)
 	if err != nil {
 		return nil, err
@@ -94,12 +101,12 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	if err != nil {
 		return nil, err
 	}
-	err = requireSupportedMacroDataset(macroNet)
+	err = requireSupportedMacroDatasetUses(macroNet, options.standardUses)
 	if err != nil {
 		return nil, err
 	}
 	for _, mvmt := range movements {
-		if mvmt.AllowedUses() != "" {
+		if mvmt.AllowedUses() != "" && !options.standardUses {
 			return nil, fmt.Errorf("%w: authored movement allowed_uses mapping is not implemented", ErrUnsupportedGenerationInput)
 		}
 	}
@@ -231,7 +238,7 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	for _, nodeID := range sortedMacroNodeIDsMain {
 		macroNode := macroNet.Nodes[nodeID]
 		// Authored lane scopes require explicit connectors instead of merged road endpoints.
-		if preserveConnectors {
+		if options.preserveConnectors {
 			continue
 		}
 		// Preserve explicit junctions with signals, stop or yield control.
@@ -359,7 +366,7 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	st = time.Now()
 	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
-		macroLinkProcess.updateCutLength(cutLengths)
+		macroLinkProcess.updateCutLength(options.cutLengths)
 		macroLinkProcess.performCut()
 	}
 	if VERBOSE {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/macro"
-	"github.com/LdDl/go-gmns/meso"
 	"github.com/LdDl/go-gmns/movement"
 	"github.com/LdDl/go-gmns/utils/geomath"
 	"github.com/paulmach/orb/geo"
@@ -13,6 +12,15 @@ import (
 
 type mesoPreparationOptions struct {
 	uniformLaneLayout bool
+	defaultLanes      *int
+}
+
+// WithDefaultMesoLanes fills only absent lane counts using an explicitly accepted assumption.
+// Supplied zeroes, negative counts and movement lane references are never replaced.
+func WithDefaultMesoLanes(lanes int) MesoPreparationOption {
+	return func(options *mesoPreparationOptions) {
+		options.defaultLanes = &lanes
+	}
 }
 
 type MesoPreparationOption func(*mesoPreparationOptions)
@@ -25,10 +33,10 @@ func WithUniformLaneLayout() MesoPreparationOption {
 	}
 }
 
-// PrepareMesoscopic prepares a new network from standard macro records and owned movements.
+// PrepareMesoscopic returns completed macro records, a new meso network and applied assumptions.
 // It rebuilds derived data independently of source caches and never changes the input.
-// The baseline requires explicit single-lane movements and supplied positive lengths/counts.
-func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*meso.Net, error) {
+// The baseline requires explicit single-lane movements and supplied positive lengths.
+func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*MesoPreparationResult, error) {
 	options := mesoPreparationOptions{}
 	for _, option := range configure {
 		if option == nil {
@@ -39,6 +47,9 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if !options.uniformLaneLayout {
 		return nil, fmt.Errorf("meso preparation requires an explicit lane layout: use WithUniformLaneLayout for constant supplied counts")
 	}
+	if options.defaultLanes != nil && (*options.defaultLanes <= 0 || *options.defaultLanes >= len(CUT_LENGTHS)) {
+		return nil, fmt.Errorf("default meso lanes must be in 1..%d, got %d", len(CUT_LENGTHS)-1, *options.defaultLanes)
+	}
 	err := source.ValidateDataset()
 	if err != nil {
 		return nil, err
@@ -46,11 +57,20 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if source.HasDetailedRecords() {
 		return nil, unsupportedPreparationDetail(source)
 	}
-	working, err := prepareMacroRecords(source)
+	working, err := prepareMacroRecords(source, &options)
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := generateMesoscopic(working, working.MovementStorage(), true, preparationCutLengths())
+	generationOptions := mesoGenerationOptions{
+		preserveConnectors: true,
+		standardUses:       true,
+		cutLengths:         preparationCutLengths(),
+	}
+	prepared, err := generateMesoscopic(working, working.MovementStorage(), &generationOptions)
+	if err != nil {
+		return nil, err
+	}
+	err = applyPreparedUses(working, prepared)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +78,14 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if err != nil {
 		return nil, fmt.Errorf("prepared meso dataset: %w", err)
 	}
-	return prepared, nil
+	result := &MesoPreparationResult{macroNet: working, mesoNet: prepared}
+	for _, link := range macroLinksToSlice(source.Links) {
+		_, present := link.LanesNum()
+		if !present {
+			result.laneAssumptions = append(result.laneAssumptions, LaneCountAssumption{linkID: link.ID, lanes: *options.defaultLanes})
+		}
+	}
+	return result, nil
 }
 
 func unsupportedPreparationDetail(source *macro.Net) error {
@@ -74,11 +101,17 @@ func unsupportedPreparationDetail(source *macro.Net) error {
 	return fmt.Errorf("%w: segment_lane %v: uniform layout cannot replace supplied detailed records", ErrUnsupportedGenerationInput, segmentLanes[0].ID)
 }
 
-func prepareMacroRecords(source *macro.Net) (*macro.Net, error) {
+func prepareMacroRecords(source *macro.Net, options *mesoPreparationOptions) (*macro.Net, error) {
 	working := macro.NewNet()
 	err := working.SetConfig(source.Config())
 	if err != nil {
 		return nil, err
+	}
+	for _, record := range source.GeometryRecords() {
+		err = working.AddGeometry(record)
+		if err != nil {
+			return nil, err
+		}
 	}
 	for _, record := range source.ZoneRecords() {
 		err = working.AddZone(record)
@@ -126,7 +159,7 @@ func prepareMacroRecords(source *macro.Net) (*macro.Net, error) {
 		working.Nodes[id] = copyNode
 	}
 	for _, link := range macroLinksToSlice(source.Links) {
-		copyLink, copyErr := prepareMacroLink(source, link)
+		copyLink, copyErr := prepareMacroLink(source, link, options)
 		if copyErr != nil {
 			return nil, copyErr
 		}
@@ -139,6 +172,10 @@ func prepareMacroRecords(source *macro.Net) (*macro.Net, error) {
 		if err != nil {
 			return nil, err
 		}
+		_, err = movementAllowedUses(working, record)
+		if err != nil {
+			return nil, err
+		}
 		err = working.AddMovement(record)
 		if err != nil {
 			return nil, err
@@ -147,12 +184,9 @@ func prepareMacroRecords(source *macro.Net) (*macro.Net, error) {
 	return working, nil
 }
 
-func prepareMacroLink(source *macro.Net, link *macro.Link) (*macro.Link, error) {
+func prepareMacroLink(source *macro.Net, link *macro.Link, options *mesoPreparationOptions) (*macro.Link, error) {
 	if !link.Directed() {
 		return nil, fmt.Errorf("link %v: meso preparation requires directed links", link.ID)
-	}
-	if link.AllowedUses() != "" {
-		return nil, fmt.Errorf("%w: link %v allowed_uses: saved use permissions are not supported by baseline preparation yet", ErrUnsupportedGenerationInput, link.ID)
 	}
 	toll, hasToll := link.Toll()
 	if hasToll && toll != 0 {
@@ -160,7 +194,10 @@ func prepareMacroLink(source *macro.Net, link *macro.Link) (*macro.Link, error) 
 	}
 	lanes, present := link.LanesNum()
 	if !present {
-		return nil, fmt.Errorf("link %v lanes: supply a positive count before meso preparation", link.ID)
+		if options.defaultLanes == nil {
+			return nil, fmt.Errorf("link %v lanes: supply a positive count or explicitly accept WithDefaultMesoLanes", link.ID)
+		}
+		lanes = *options.defaultLanes
 	}
 	if lanes <= 0 || lanes >= len(CUT_LENGTHS) {
 		return nil, fmt.Errorf("link %v lanes: baseline preparation supports 1..%d, got %d", link.ID, len(CUT_LENGTHS)-1, lanes)
@@ -208,7 +245,15 @@ func prepareMacroLink(source *macro.Net, link *macro.Link) (*macro.Link, error) 
 		macro.WithPedFacility(link.PedFacility()),
 		macro.WithParking(link.Parking()),
 		macro.WithJurisdiction(link.Jurisdiction()),
+		macro.WithAllowedUses(link.AllowedUses()),
 	)
+	if shared {
+		macro.WithGeometryID(geometryID)(copyLink)
+	}
+	direction, present := link.DirFlag()
+	if present {
+		macro.WithDirFlag(direction)(copyLink)
+	}
 	freeSpeed, present := link.FreeSpeed()
 	if present {
 		macro.WithFreeSpeed(freeSpeed)(copyLink)
@@ -241,9 +286,6 @@ func prepareMacroLink(source *macro.Net, link *macro.Link) (*macro.Link, error) 
 }
 
 func prepareMovementLanes(net *macro.Net, record *movement.Movement) error {
-	if record.AllowedUses() != "" {
-		return fmt.Errorf("%w: movement %v allowed_uses: saved use permissions are not supported by baseline preparation yet", ErrUnsupportedGenerationInput, record.ID)
-	}
 	inStart, hasInStart := record.IncomeLaneStart()
 	inEnd, hasInEnd := record.IncomeLaneEnd()
 	outStart, hasOutStart := record.OutcomeLaneStart()

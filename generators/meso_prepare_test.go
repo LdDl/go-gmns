@@ -60,12 +60,12 @@ func TestPrepareMesoscopicFromStandardRecords(t *testing.T) {
 				return
 			}
 			assert.Equal(t, expectedSource, source)
-			assert.NoError(t, first.ValidateDataset())
-			assert.Len(t, first.Nodes, 4)
-			assert.Len(t, first.Links, 3)
-			assert.Empty(t, first.MovementRecords())
+			assert.NoError(t, first.Meso().ValidateDataset())
+			assert.Len(t, first.Meso().Nodes, 4)
+			assert.Len(t, first.Meso().Links, 3)
+			assert.Empty(t, first.Meso().MovementRecords())
 			connectors := 0
-			for _, link := range first.Links {
+			for _, link := range first.Meso().Links {
 				assert.Equal(t, kind, link.ID.Type())
 				capacity, present := link.Capacity()
 				assert.True(t, present)
@@ -100,7 +100,7 @@ func TestPrepareMesoscopicFromStandardRecords(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, first, third)
 			// Mutating generated geometry must not reach the source shape.
-			for _, link := range first.Links {
+			for _, link := range first.Meso().Links {
 				link.Geom()[0][0] = 0
 			}
 			for _, link := range source.Links {
@@ -127,7 +127,7 @@ func TestPrepareMesoscopicSharedGeometry(t *testing.T) {
 	}
 	actual, err := PrepareMesoscopic(source, WithUniformLaneLayout())
 	assert.NoError(t, err)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, expected.Meso(), actual.Meso())
 	for _, link := range source.Links {
 		assert.Nil(t, link.Geom())
 	}
@@ -219,9 +219,9 @@ func TestPrepareMesoscopicEmptyAndExplicitOptions(t *testing.T) {
 	if err != nil {
 		return
 	}
-	assert.Empty(t, prepared.Nodes)
-	assert.Empty(t, prepared.Links)
-	assert.Equal(t, gmns.IDTypeString, prepared.Config().IDType())
+	assert.Empty(t, prepared.Meso().Nodes)
+	assert.Empty(t, prepared.Meso().Links)
+	assert.Equal(t, gmns.IDTypeString, prepared.Meso().Config().IDType())
 }
 
 func assertPreparationError(t *testing.T, err error, message string) {
@@ -246,9 +246,9 @@ func TestPrepareMesoscopicTwoWayAndLegacySettings(t *testing.T) {
 	if err != nil {
 		return
 	}
-	assert.Len(t, first.Links, 4)
-	assert.Len(t, first.Nodes, 6)
-	for _, link := range first.Links {
+	assert.Len(t, first.Meso().Links, 4)
+	assert.Len(t, first.Meso().Nodes, 6)
+	for _, link := range first.Meso().Links {
 		if link.MacroLink() == forward.ID || link.MacroLink() == reverseID {
 			assert.NotEqual(t, 55.0, link.Geom()[0][1])
 		}
