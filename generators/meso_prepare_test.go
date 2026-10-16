@@ -198,7 +198,7 @@ func TestPrepareMesoscopicRequiresExplicitScopes(t *testing.T) {
 	err := source.UpdateMovement(record)
 	assert.NoError(t, err)
 	_, err = PrepareMesoscopic(source, WithUniformLaneLayout())
-	assertPreparationError(t, err, "movement 49: baseline preparation requires exact single-lane")
+	assertPreparationError(t, err, "movement 49: accept WithOrderedLaneConnections")
 	movement.WithoutIncomeLaneStart()(record)
 	err = source.UpdateMovement(record)
 	assert.NoError(t, err)

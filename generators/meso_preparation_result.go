@@ -12,6 +12,8 @@ type MesoPreparationResult struct {
 	macroNet        *macro.Net
 	mesoNet         *meso.Net
 	laneAssumptions []LaneCountAssumption
+	sections        []PreparedSection
+	connections     []PreparedConnection
 }
 
 // Macro returns the completed source dataset owned by this result.

@@ -11,8 +11,10 @@ import (
 )
 
 type mesoPreparationOptions struct {
-	uniformLaneLayout bool
-	defaultLanes      *int
+	uniformLaneLayout      bool
+	defaultLanes           *int
+	detailedLaneLayout     bool
+	orderedLaneConnections bool
 }
 
 // WithDefaultMesoLanes fills only absent lane counts using an explicitly accepted assumption.
@@ -35,7 +37,7 @@ func WithUniformLaneLayout() MesoPreparationOption {
 
 // PrepareMesoscopic returns completed macro records, a new meso network and applied assumptions.
 // It rebuilds derived data independently of source caches and never changes the input.
-// The baseline requires explicit single-lane movements and supplied positive lengths.
+// Supplied positive lengths and an explicit lane-layout policy are required.
 func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*MesoPreparationResult, error) {
 	options := mesoPreparationOptions{}
 	for _, option := range configure {
@@ -44,22 +46,39 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 		}
 		option(&options)
 	}
-	if !options.uniformLaneLayout {
+	if !options.uniformLaneLayout && !options.detailedLaneLayout {
 		return nil, fmt.Errorf("meso preparation requires an explicit lane layout: use WithUniformLaneLayout for constant supplied counts")
 	}
 	if options.defaultLanes != nil && (*options.defaultLanes <= 0 || *options.defaultLanes >= len(CUT_LENGTHS)) {
 		return nil, fmt.Errorf("default meso lanes must be in 1..%d, got %d", len(CUT_LENGTHS)-1, *options.defaultLanes)
 	}
+	if options.uniformLaneLayout && options.detailedLaneLayout {
+		return nil, fmt.Errorf("choose one lane layout: uniform or detailed")
+	}
 	err := source.ValidateDataset()
 	if err != nil {
 		return nil, err
 	}
-	if source.HasDetailedRecords() {
+	if source.HasDetailedRecords() && !options.detailedLaneLayout {
 		return nil, unsupportedPreparationDetail(source)
 	}
 	working, err := prepareMacroRecords(source, &options)
 	if err != nil {
 		return nil, err
+	}
+	layout, err := prepareLaneLayout(source, working)
+	if err != nil {
+		return nil, err
+	}
+	for _, record := range source.MovementRecords() {
+		err = prepareMovementLanes(working, record, layout, &options)
+		if err != nil {
+			return nil, err
+		}
+		err = working.AddMovement(record)
+		if err != nil {
+			return nil, err
+		}
 	}
 	generationOptions := mesoGenerationOptions{
 		preserveConnectors: true,
@@ -70,7 +89,7 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if err != nil {
 		return nil, err
 	}
-	err = applyPreparedUses(working, prepared)
+	err = applyPreparedSections(working, prepared, layout)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +97,13 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if err != nil {
 		return nil, fmt.Errorf("prepared meso dataset: %w", err)
 	}
+	err = copyPreparationDetails(source, working)
+	if err != nil {
+		return nil, err
+	}
 	result := &MesoPreparationResult{macroNet: working, mesoNet: prepared}
+	result.sections = preparationLineage(prepared, layout)
+	result.connections = preparationConnections(working, prepared, layout)
 	for _, link := range macroLinksToSlice(source.Links) {
 		_, present := link.LanesNum()
 		if !present {
@@ -166,20 +191,6 @@ func prepareMacroRecords(source *macro.Net, options *mesoPreparationOptions) (*m
 		working.Links[link.ID] = copyLink
 		macro.WithOutcomingLinks(link.ID)(working.Nodes[link.SourceNode()])
 		macro.WithIncomingLinks(link.ID)(working.Nodes[link.TargetNode()])
-	}
-	for _, record := range source.MovementRecords() {
-		err = prepareMovementLanes(working, record)
-		if err != nil {
-			return nil, err
-		}
-		_, err = movementAllowedUses(working, record)
-		if err != nil {
-			return nil, err
-		}
-		err = working.AddMovement(record)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return working, nil
 }
@@ -285,28 +296,41 @@ func prepareMacroLink(source *macro.Net, link *macro.Link, options *mesoPreparat
 	return copyLink, nil
 }
 
-func prepareMovementLanes(net *macro.Net, record *movement.Movement) error {
+func prepareMovementLanes(net *macro.Net, record *movement.Movement, layout preparationLayout, options *mesoPreparationOptions) error {
 	inStart, hasInStart := record.IncomeLaneStart()
 	inEnd, hasInEnd := record.IncomeLaneEnd()
 	outStart, hasOutStart := record.OutcomeLaneStart()
 	outEnd, hasOutEnd := record.OutcomeLaneEnd()
-	if !hasInStart || !hasInEnd || !hasOutStart || !hasOutEnd {
-		return fmt.Errorf("movement %v: supply start_ib_lane, end_ib_lane, start_ob_lane and end_ob_lane before preparation", record.ID)
+	if !hasInStart || !hasOutStart {
+		return fmt.Errorf("movement %v: supply start_ib_lane and start_ob_lane before preparation", record.ID)
 	}
-	inLanes, _ := net.Links[record.IncomeLink()].LanesNum()
-	outLanes, _ := net.Links[record.OutcomeLink()].LanesNum()
-	if inStart < 1 || inEnd < inStart || inEnd > inLanes {
-		return fmt.Errorf("movement %v: inbound lane range %d..%d is outside link %v lanes 1..%d", record.ID, inStart, inEnd, record.IncomeLink(), inLanes)
+	if !hasInEnd {
+		inEnd = inStart
 	}
-	if outStart < 1 || outEnd < outStart || outEnd > outLanes {
-		return fmt.Errorf("movement %v: outbound lane range %d..%d is outside link %v lanes 1..%d", record.ID, outStart, outEnd, record.OutcomeLink(), outLanes)
+	if !hasOutEnd {
+		outEnd = outStart
 	}
-	if inStart != inEnd || outStart != outEnd {
-		return fmt.Errorf("%w: movement %v: baseline preparation requires exact single-lane scopes; range connection semantics must be resolved explicitly", ErrUnsupportedGenerationInput, record.ID)
+	inbound := layout[record.IncomeLink()]
+	outbound := layout[record.OutcomeLink()]
+	inNumbers := inbound[len(inbound)-1].numbers
+	outNumbers := outbound[0].numbers
+	inFirst, inLast := lanePosition(inNumbers, inStart), lanePosition(inNumbers, inEnd)
+	outFirst, outLast := lanePosition(outNumbers, outStart), lanePosition(outNumbers, outEnd)
+	if inFirst < 0 || inLast < inFirst {
+		return fmt.Errorf("movement %v: inbound lane range %d..%d is outside link %v endpoint lanes %v", record.ID, inStart, inEnd, record.IncomeLink(), inNumbers)
 	}
-	movement.WithIncomeLaneSequence(inStart-1, inEnd-1)(record)
-	movement.WithOutcomeLaneSequence(outStart-1, outEnd-1)(record)
-	movement.WithLanesNum(1)(record)
+	if outFirst < 0 || outLast < outFirst {
+		return fmt.Errorf("movement %v: outbound lane range %d..%d is outside link %v endpoint lanes %v", record.ID, outStart, outEnd, record.OutcomeLink(), outNumbers)
+	}
+	if (inFirst != inLast || outFirst != outLast) && !options.orderedLaneConnections {
+		return fmt.Errorf("%w: movement %v: accept WithOrderedLaneConnections for multi-lane ranges", ErrUnsupportedGenerationInput, record.ID)
+	}
+	if inLast-inFirst != outLast-outFirst {
+		return fmt.Errorf("movement %v: ordered connections require equal lane counts (%d inbound, %d outbound); resolve the movement explicitly", record.ID, inLast-inFirst+1, outLast-outFirst+1)
+	}
+	movement.WithIncomeLaneSequence(inFirst, inLast)(record)
+	movement.WithOutcomeLaneSequence(outFirst, outLast)(record)
+	movement.WithLanesNum(inLast - inFirst + 1)(record)
 	movement.WithAllowedAgentTypes(nil)(record)
 	return nil
 }

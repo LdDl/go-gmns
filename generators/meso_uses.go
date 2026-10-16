@@ -36,12 +36,16 @@ func expandedUses(net *macro.Net, value string) (map[string]bool, error) {
 }
 
 func movementAllowedUses(net *macro.Net, record *movement.Movement) (string, error) {
-	var intersection map[string]bool
 	values := []string{
 		net.Links[record.IncomeLink()].AllowedUses(),
 		record.AllowedUses(),
 		net.Links[record.OutcomeLink()].AllowedUses(),
 	}
+	return intersectMovementUses(net, record, values)
+}
+
+func intersectMovementUses(net *macro.Net, record *movement.Movement, values []string) (string, error) {
+	var intersection map[string]bool
 	for _, value := range values {
 		uses, err := expandedUses(net, value)
 		if err != nil {

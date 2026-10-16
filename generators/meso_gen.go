@@ -367,6 +367,12 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 	for _, macroLinkID := range sortedNeedToObserve {
 		macroLinkProcess := needToObserve[macroLinkID]
 		macroLinkProcess.updateCutLength(options.cutLengths)
+		if options.preserveConnectors {
+			points := macroLinkProcess.lanesInfo.LanesChangePoints
+			// Leave half of each terminal section when its interval is very short.
+			macroLinkProcess.upstreamCutLen = math.Min(macroLinkProcess.upstreamCutLen, (points[1]-points[0])/2)
+			macroLinkProcess.downstreamCutLen = math.Min(macroLinkProcess.downstreamCutLen, (points[len(points)-1]-points[len(points)-2])/2)
+		}
 		macroLinkProcess.performCut()
 	}
 	if VERBOSE {
