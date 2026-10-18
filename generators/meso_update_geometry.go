@@ -18,6 +18,18 @@ func recomputeMesoRoad(prepared *MesoPreparationResult, id gmns.LinkID, offset b
 	source := prepared.macroNet.Links[id]
 	processing := &macroLinkProcessing{id: id, lanesInfo: source.LanesInfo()}
 	processing.offsetGeom = source.Geom().Clone()
+	if len(processing.offsetGeom) == 0 {
+		geometryID, _ := source.GeometryID()
+		geometry, exists := prepared.macroNet.Geometry(geometryID)
+		if !exists {
+			return mesoUpdateFailure("invalid_source", "source road has no geometry")
+		}
+		processing.offsetGeom = geometry.Geom()
+		direction, _ := source.DirFlag()
+		if direction == gmns.DIR_FLAG_REVERSE {
+			processing.offsetGeom.Reverse()
+		}
+	}
 	processing.offsetGeomEuclidean = source.GeomEuclidean().Clone()
 	if offset {
 		distance := 2 * (float64(source.MaxLanes())/2 + 0.5) * macro.LANE_WIDTH
@@ -49,6 +61,11 @@ func recomputeMesoRoad(prepared *MesoPreparationResult, id gmns.LinkID, offset b
 		shape := processing.offsetGeomCut[0]
 		projected := processing.offsetGeomEuclideanCut[0]
 		count, _ := source.LanesNum()
+		_, wasShared := link.GeometryID()
+		if wasShared {
+			meso.WithoutGeometryID()(link)
+			meso.WithDirFlag(gmns.DIR_FLAG_FORWARD)(link)
+		}
 		meso.WithLineGeom(shape.Clone())(link)
 		meso.WithLineGeomEuclidean(projected.Clone())(link)
 		meso.WithLanesNum(count)(link)
@@ -173,7 +190,19 @@ func updateMesoConnections(ctx context.Context, state *MesoUpdateState, result *
 		outEdit := edit.roads[record.OutcomeLink()]
 		geometryChanged := !existing || inEdit != nil && inEdit.laneDelta != 0 || outEdit != nil && outEdit.laneDelta != 0
 		if geometryChanged {
-			updateMesoConnectionGeometry(link, upstream, downstream)
+			inShape, shapeErr := archiveMesoShape(target, upstream)
+			if shapeErr != nil {
+				return shapeErr
+			}
+			outShape, shapeErr := archiveMesoShape(target, downstream)
+			if shapeErr != nil {
+				return shapeErr
+			}
+			incomingGeometry := upstream.Clone()
+			outgoingGeometry := downstream.Clone()
+			meso.WithLineGeom(inShape)(incomingGeometry)
+			meso.WithLineGeom(outShape)(outgoingGeometry)
+			updateMesoConnectionGeometry(link, incomingGeometry, outgoingGeometry)
 			result.recomputedConnections = append(result.recomputedConnections, linkID)
 		}
 		_, rangesChanged := edit.movements[id]
@@ -206,6 +235,11 @@ func updateMesoConnectionGeometry(link, upstream, downstream *meso.Link) {
 	inProjected, outProjected := upstream.GeomEuclidean(), downstream.GeomEuclidean()
 	shape := orb.LineString{inShape[len(inShape)-1], outShape[0]}
 	projected := orb.LineString{inProjected[len(inProjected)-1], outProjected[0]}
+	_, wasShared := link.GeometryID()
+	if wasShared {
+		meso.WithoutGeometryID()(link)
+		meso.WithDirFlag(gmns.DIR_FLAG_FORWARD)(link)
+	}
 	meso.WithLineGeom(shape)(link)
 	meso.WithLineGeomEuclidean(projected)(link)
 	meso.WithLengthMeters(geo.LengthHaversine(shape))(link)

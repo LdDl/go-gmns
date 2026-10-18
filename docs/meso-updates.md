@@ -15,7 +15,7 @@ if err != nil {
 prepared = result.Preparation()
 ```
 
-Prepare the initial network with `PrepareMesoscopic`. Retain its state for previews; adopt the returned preparation only when the caller accepts the complete transaction. The library does not manage UI history or commit caller-owned state.
+Prepare the initial network with `PrepareMesoscopic`, restore saved state with `RestoreMesoUpdateState`, or explicitly initialize supported historical records with `InitializeMesoUpdateState`. Retain its state for previews; adopt the returned preparation only when the caller accepts the complete transaction. The library does not manage UI history or commit caller-owned state.
 
 ## Supported edits
 
@@ -41,6 +41,6 @@ All surviving section, node and connector IDs are retained. Explicit new movemen
 
 Use `errors.As` with `*generators.MesoUpdateError`, then inspect `Conflicts()`. Unresolved lane scopes report movement IDs, source roads and inbound/outbound sides. Invalid requests, stale sources, incompatible lineage and manual meso changes are rejected without a result. No replacement lanes or turns are inferred.
 
-The first profile requires the exact in-memory binding created by preparation or a prior accepted update. It rejects all external manual meso changes, including additional rows, and does not restore bindings from archived CSV/provenance. Keep records and their state together when branching previews or implementing Undo. Callers must not mutate inputs concurrently.
+Local updates require a binding created by preparation, restoration, initialization or a prior accepted update. External manual meso changes, including additional rows, are rejected. Keep records and their state together when branching previews or implementing Undo. Callers must not mutate inputs concurrently.
 
 The full preparation algorithm remains `standard-macro-sections-3`; local updates use `local-macro-roads-1`. Incremental connector IDs may differ from a fresh full build. Compare roads by source link and section index, nodes by road boundary, and connectors by movement ID. Numerical differences must be reported without an implicit tolerance or quantization.
