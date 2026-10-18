@@ -98,6 +98,7 @@ flowchart LR
 | Movements | Storage at each network level; generation from macro | Generated meso/micro connectors retain source movement provenance |
 | Meso and micro generation | Available | Requires prepared topology, geometry and lane data |
 | Meso preparation from standard records | `generators.PrepareMesoscopic` | Rebuilds internal data; preserves source records and returns lineage |
+| Local meso updates | `generators.UpdateMesoscopic` | Explicit road/lane edits and movement resolutions with stable surviving IDs |
 | GeoJSON | Nodes, links and separately exported movements | Visualization output; does not serialize the complete dataset |
 | WKT | `WKT()` on nodes, links, movements, geometries and zones | Two-dimensional geometry as a string |
 | Geometry utilities | Available | Coordinate conversion, offsets and distances |
@@ -118,6 +119,7 @@ Time-of-day, signal timing, location and curb records are outside the supported 
 | [Types and constants](docs/types.md) | Built-in values for control, node, movement, road, agent, cell and infrastructure categories |
 | [Generation](docs/generation.md) | Input preparation, generator calls, behavior and options |
 | [Meso preparation](docs/meso-preparation.md) | Standard macro inputs, lane policies, results and supported detail |
+| [Local meso updates](docs/meso-updates.md) | Supported edits, dependencies, identities and conflicts |
 | [Basic example](cmd/examples/basic/README.md) | A runnable network construction and GeoJSON export example |
 
 ## References

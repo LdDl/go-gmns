@@ -120,51 +120,7 @@ func generateMesoscopic(macroNet *macro.Net, movements movement.MovementsStorage
 		log.Info().Str("scope", "gen_meso").Msg("Preparing geometries offsets")
 	}
 
-	macroLinks := macroLinksToSlice(macroNet.Links)
-	needToObserve := make(map[gmns.LinkID]*macroLinkProcessing, len(macroLinks))
-	hashesEuclidean := make(map[gmns.LinkID]string, len(macroLinks))
-	for i := range macroLinks {
-		hashesEuclidean[macroLinks[i].ID] = geomath.GeometryHash(macroLinks[i].GeomEuclidean())
-	}
-
-	// Detect bidirectional links (single-threaded to avoid race conditions)
-	for i := 0; i < len(macroLinks); i++ {
-		macroLink := macroLinks[i]
-		macroLinkID := macroLink.ID
-		if _, ok := needToObserve[macroLinkID]; ok {
-			continue
-		}
-
-		reversedGeom := macroLink.GeomEuclidean().Clone()
-		reversedGeom.Reverse()
-		reversedGeomHash := geomath.GeometryHash(reversedGeom)
-		reversedLinkExists := false
-
-		// Compare only with subsequent links
-		for j := i + 1; j < len(macroLinks); j++ {
-			macroLinkCompare := macroLinks[j]
-			macroLinkCompareID := macroLinkCompare.ID
-			macroLinkGeomEuclidean := macroLinkCompare.GeomEuclidean()
-			if len(reversedGeom) != len(macroLinkGeomEuclidean) {
-				continue
-			}
-			hashedGeomEuclidean, ok := hashesEuclidean[macroLinkCompareID]
-			if !ok {
-				panic("Could not happen. Hashes are prepared for every macroscopic link")
-			}
-			if reversedGeomHash == hashedGeomEuclidean {
-				reversedLinkExists = true
-				// Both bidirectional links use the same negative offset (-1.0)
-				// Since their geometries are reversed, they end up on opposite sides of centerline
-				needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
-				needToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
-				break
-			}
-		}
-		if !reversedLinkExists {
-			needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
-		}
-	}
+	needToObserve := mesoRoadProcessing(macroNet)
 
 	sortedNeedToObserve := sortedLinkIDs(needToObserve)
 	for _, macroLinkID := range sortedNeedToObserve {
@@ -1022,4 +978,54 @@ func updateLinksProperties(
 		meso.WithAllowedAgentTypes(upstreamMesoLink.AllowedAgentTypes())(mesoLink)
 	}
 	return nil
+}
+
+func mesoRoadProcessing(macroNet *macro.Net) map[gmns.LinkID]*macroLinkProcessing {
+	macroLinks := macroLinksToSlice(macroNet.Links)
+	needToObserve := make(map[gmns.LinkID]*macroLinkProcessing, len(macroLinks))
+	hashesEuclidean := make(map[gmns.LinkID]string, len(macroLinks))
+	for i := range macroLinks {
+		hashesEuclidean[macroLinks[i].ID] = geomath.GeometryHash(macroLinks[i].GeomEuclidean())
+	}
+
+	// Detect bidirectional links (single-threaded to avoid race conditions)
+	for i := 0; i < len(macroLinks); i++ {
+		macroLink := macroLinks[i]
+		macroLinkID := macroLink.ID
+		if _, ok := needToObserve[macroLinkID]; ok {
+			continue
+		}
+
+		reversedGeom := macroLink.GeomEuclidean().Clone()
+		reversedGeom.Reverse()
+		reversedGeomHash := geomath.GeometryHash(reversedGeom)
+		reversedLinkExists := false
+
+		// Compare only with subsequent links
+		for j := i + 1; j < len(macroLinks); j++ {
+			macroLinkCompare := macroLinks[j]
+			macroLinkCompareID := macroLinkCompare.ID
+			macroLinkGeomEuclidean := macroLinkCompare.GeomEuclidean()
+			if len(reversedGeom) != len(macroLinkGeomEuclidean) {
+				continue
+			}
+			hashedGeomEuclidean, ok := hashesEuclidean[macroLinkCompareID]
+			if !ok {
+				panic("Could not happen. Hashes are prepared for every macroscopic link")
+			}
+			if reversedGeomHash == hashedGeomEuclidean {
+				reversedLinkExists = true
+				// Both bidirectional links use the same negative offset (-1.0)
+				// Since their geometries are reversed, they end up on opposite sides of centerline
+				needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+				needToObserve[macroLinkCompareID] = &macroLinkProcessing{id: macroLinkCompareID, lanesInfo: macroLinkCompare.LanesInfo(), needsOffset: true, offsetDirection: -1.0, sourceMacroNodeID: macroLinkCompare.SourceNode(), targetMacroNodeID: macroLinkCompare.TargetNode()}
+				break
+			}
+		}
+		if !reversedLinkExists {
+			needToObserve[macroLinkID] = &macroLinkProcessing{id: macroLinkID, lanesInfo: macroLink.LanesInfo(), offsetDirection: -1.0, sourceMacroNodeID: macroLink.SourceNode(), targetMacroNodeID: macroLink.TargetNode()}
+		}
+	}
+
+	return needToObserve
 }
