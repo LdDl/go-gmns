@@ -101,7 +101,7 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 	if err != nil {
 		return nil, err
 	}
-	result := &MesoPreparationResult{macroNet: working, mesoNet: prepared}
+	result := &MesoPreparationResult{macroNet: working, mesoNet: prepared, options: options, algorithm: MesoPreparationAlgorithm}
 	result.sections = preparationLineage(prepared, layout)
 	result.connections = preparationConnections(working, prepared, layout)
 	for _, link := range macroLinksToSlice(source.Links) {
@@ -110,6 +110,7 @@ func PrepareMesoscopic(source *macro.Net, configure ...MesoPreparationOption) (*
 			result.laneAssumptions = append(result.laneAssumptions, LaneCountAssumption{linkID: link.ID, lanes: *options.defaultLanes})
 		}
 	}
+	bindMesoPreparation(result, layout, nil)
 	return result, nil
 }
 

@@ -9,6 +9,9 @@ import (
 // MesoPreparationResult owns independent completed source and generated datasets.
 // Neither dataset shares mutable geometry with the original input.
 type MesoPreparationResult struct {
+	updateState     *MesoUpdateState
+	options         mesoPreparationOptions
+	algorithm       string
 	macroNet        *macro.Net
 	mesoNet         *meso.Net
 	laneAssumptions []LaneCountAssumption

@@ -38,7 +38,7 @@ Supplied segment attributes override link attributes; absent values inherit them
 
 `Macro()` returns the completed source dataset, including original detailed records and accepted lane defaults. `Meso()` returns the generated network. `LaneAssumptions()`, `Sections()` and `Connections()` return copies of defaults, source-to-section associations and ordered lane pairs. Section intervals describe the source road before junction cuts. No standard lane IDs are fabricated from counts.
 
-Identical inputs and options produce repeatable results within Go. Generated IDs may change after source edits; cross-language numerical equality is not guaranteed.
+Identical inputs and options produce repeatable results within Go. Fresh full preparation can assign different IDs after source edits. `UpdateMesoscopic` retains surviving identities for supported local edits using the result's `UpdateState()` binding. Cross-language numerical equality is not guaranteed.
 
 ## Limits
 
