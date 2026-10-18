@@ -13,14 +13,17 @@ import (
 // It is immutable and safe to reuse for independent previews. It is application metadata.
 // This first profile rejects manual changes to the bound datasets, including extra rows.
 type MesoUpdateState struct {
-	prepared      *MesoPreparationResult
-	layout        preparationLayout
-	offsets       map[gmns.LinkID]bool
-	reservedLinks map[gmns.LinkID]bool
+	snapshot       *MesoArchiveSnapshot
+	importedSource *macro.Net
+	importedTarget *meso.Net
+	prepared       *MesoPreparationResult
+	layout         preparationLayout
+	offsets        map[gmns.LinkID]bool
+	reservedLinks  map[gmns.LinkID]bool
 }
 
 // UpdateState returns the immutable binding created by preparation or an accepted update.
-// Imported records without this binding cannot be used for local editing.
+// Saved state can be restored against unchanged records; historical imports require explicit initialization.
 func (result *MesoPreparationResult) UpdateState() *MesoUpdateState {
 	return result.updateState
 }
@@ -115,6 +118,7 @@ func bindMesoPreparation(prepared *MesoPreparationResult, layout preparationLayo
 	for id := range prepared.mesoNet.Links {
 		state.reservedLinks[id] = true
 	}
+	state.snapshot = makeMesoArchive(state, previous)
 	prepared.updateState = state
 }
 
@@ -128,6 +132,9 @@ func (state *MesoUpdateState) validateBase(ctx context.Context, source *macro.Ne
 	}
 	if state == nil || state.prepared == nil || state.prepared.algorithm != MesoPreparationAlgorithm {
 		return mesoUpdateFailure("incompatible_lineage", "meso update requires current preparation lineage")
+	}
+	if state.importedSource != nil && equalMesoRecords(source, state.importedSource) && equalMesoRecords(previous, state.importedTarget) {
+		return nil
 	}
 	if !equalMesoRecords(source, state.prepared.macroNet) {
 		return mesoUpdateFailure("stale_source", "macro source differs from the bound preparation state")

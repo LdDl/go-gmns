@@ -142,7 +142,7 @@ func UpdateMesoscopic(ctx context.Context, source *macro.Net, previous *meso.Net
 	if err != nil {
 		return nil, mesoUpdateFailure("invalid_result", err.Error())
 	}
-	collectMesoChanges(previous, result)
+	collectMesoChanges(state.prepared.mesoNet, result)
 	bindMesoPreparation(prepared, layout, state)
 	err = ctx.Err()
 	if err != nil {
