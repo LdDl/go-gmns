@@ -121,3 +121,9 @@ Start with `generators.DefaultMicroGenOptions()` and change the fields you need.
 | `Verbose` | `false` | Print micro generation progress |
 
 All physical dimensions use the metric system. These settings control graph geometry and resolution; they do not configure a vehicle simulator.
+
+## Altitude
+
+Node altitude remains independent of two-dimensional geometry. Generators copy endpoint altitude only when the generated point has exactly the source coordinates; cut, offset and intermediate points have no inferred height. Source records remain unchanged. No vertical interpolation or datum conversion is performed.
+
+Micro generation rejects supplied meso altitude that is not the same value at its exact macro source point. Local meso lane edits reject moving a node with supplied altitude. Existing saved meso records retain their heights on restoration, including values inherited by earlier generators. Attribute-only updates remain available. A numerical vertical profile is required before these unsupported transformations can be defined.

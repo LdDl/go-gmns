@@ -108,6 +108,8 @@ flowchart LR
 
 Working datasets use the **metric system**: lengths and altitudes in meters, speeds in km/h, time in seconds. Coordinates use WGS84 (`EPSG:4326`), in longitude/latitude order. Imperial-unit conversion and other coordinate reference systems are not implemented.
 
+Node altitude is optional; line geometry remains two-dimensional. Generation does not infer heights for displaced points.
+
 Generators require directed input links; represent two-way roads with two opposite directed links. Generated movements describe topology and lane connections, without interpreting OSM turn restrictions. Additional input requirements are listed in [generation](docs/generation.md#input-requirements).
 
 Time-of-day, signal timing, location and curb records are outside the supported model. CSV dataset import/export is not provided by this package; see [osm2gmns](https://github.com/LdDl/osm2gmns) for OSM conversion and CSV output.

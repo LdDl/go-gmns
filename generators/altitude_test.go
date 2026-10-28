@@ -126,3 +126,15 @@ func TestMicroRejectsAuthoredMesoAltitude(t *testing.T) {
 	assert.Nil(t, result)
 	assert.Equal(t, before, mesoNet)
 }
+
+func TestMicroAltitudeReferencePreservesSignedZero(t *testing.T) {
+	point := orb.Point{37, 55}
+	id := gmns.NodeIDFromInt64(1)
+	source := macro.NewNet()
+	source.Nodes[id] = macro.NewNodeFrom(id, macro.WithPointGeom(point), macro.WithAltitudeMeters(math.Copysign(0, -1)))
+	target := meso.NewNet()
+	target.Nodes[id] = meso.NewNodeFrom(id, meso.WithPointGeom(point), meso.WithPointMacroNodeID(id), meso.WithAltitudeMeters(0))
+	assert.ErrorIs(t, requireSupportedMesoAltitudes(source, target), ErrUnsupportedGenerationInput)
+	meso.WithAltitudeMeters(math.Copysign(0, -1))(target.Nodes[id])
+	assert.NoError(t, requireSupportedMesoAltitudes(source, target))
+}

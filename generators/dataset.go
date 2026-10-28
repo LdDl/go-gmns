@@ -2,6 +2,7 @@ package generators
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/LdDl/go-gmns/gmns"
 	"github.com/LdDl/go-gmns/macro"
@@ -212,7 +213,7 @@ func requireSupportedMesoAltitudes(source *macro.Net, target *meso.Net) error {
 		parent := source.Nodes[node.MacroNode()]
 		if parent != nil && parent.Geom() == node.Geom() {
 			expected, supplied := parent.AltitudeMeters()
-			if supplied && expected == altitude {
+			if supplied && math.Float64bits(expected) == math.Float64bits(altitude) {
 				continue
 			}
 		}
