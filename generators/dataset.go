@@ -197,7 +197,26 @@ func copyMacroEndpoint(source *macro.Node, target *micro.Node) {
 	micro.WithNodeType(source.NodeType())(target)
 	micro.WithNodeControlType(source.ControlType())(target)
 	altitude, present := source.AltitudeMeters()
-	if present {
+	if present && target.Geom() == source.Geom() {
 		micro.WithAltitudeMeters(altitude)(target)
 	}
+}
+
+// Authored meso heights cannot be projected onto displaced cells without a vertical profile.
+func requireSupportedMesoAltitudes(source *macro.Net, target *meso.Net) error {
+	for _, node := range target.Nodes {
+		altitude, present := node.AltitudeMeters()
+		if !present {
+			continue
+		}
+		parent := source.Nodes[node.MacroNode()]
+		if parent != nil && parent.Geom() == node.Geom() {
+			expected, supplied := parent.AltitudeMeters()
+			if supplied && expected == altitude {
+				continue
+			}
+		}
+		return fmt.Errorf("%w: meso node %v: micro generation cannot place supplied altitude without a vertical profile", ErrUnsupportedGenerationInput, node.ID)
+	}
+	return nil
 }

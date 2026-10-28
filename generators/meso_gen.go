@@ -856,7 +856,7 @@ func updateBoundaryType(mesoNodes map[gmns.NodeID]*meso.Node, macroNodes map[gmn
 		meso.WithNodeType(macroNode.NodeType())(mesoNode)
 		meso.WithNodeControlType(macroNode.ControlType())(mesoNode)
 		altitude, present := macroNode.AltitudeMeters()
-		if present {
+		if present && mesoNode.Geom() == macroNode.Geom() {
 			meso.WithAltitudeMeters(altitude)(mesoNode)
 		}
 		macroNodeBoundaryType := macroNode.BoundaryType()
