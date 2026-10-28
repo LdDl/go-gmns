@@ -60,6 +60,10 @@ func GenerateMicroscopic(macroNet *macro.Net, mesoNet *meso.Net, movements movem
 	if err != nil {
 		return nil, err
 	}
+	err = requireSupportedMesoAltitudes(macroNet, mesoNet)
+	if err != nil {
+		return nil, err
+	}
 	err = requireMesoRoadLengths(macroNet, mesoNet)
 	if err != nil {
 		return nil, err

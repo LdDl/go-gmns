@@ -297,7 +297,8 @@ func restoreArchiveNode(prepared *MesoPreparationResult, id, parent gmns.NodeID,
 		meso.WithNodeType(source.NodeType())(expected)
 		meso.WithNodeControlType(source.ControlType())(expected)
 		altitude, present := source.AltitudeMeters()
-		if present {
+		_, supplied := node.AltitudeMeters()
+		if present && (supplied || node.Geom() == source.Geom()) {
 			meso.WithAltitudeMeters(altitude)(expected)
 		}
 		zone, present := source.Zone()

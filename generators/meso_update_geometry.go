@@ -72,6 +72,12 @@ func recomputeMesoRoad(prepared *MesoPreparationResult, id gmns.LinkID, offset b
 		meso.WithLengthMeters(geo.LengthHaversine(shape))(link)
 		upstream := prepared.mesoNet.Nodes[link.SourceNode()]
 		downstream := prepared.mesoNet.Nodes[link.TargetNode()]
+		// Moving a measured point requires a vertical profile, which this operation does not have.
+		_, upstreamHeight := upstream.AltitudeMeters()
+		_, downstreamHeight := downstream.AltitudeMeters()
+		if upstreamHeight && upstream.Geom() != shape[0] || downstreamHeight && downstream.Geom() != shape[len(shape)-1] {
+			return fmt.Errorf("%w: link %v: lane edit would move a node with supplied altitude", ErrUnsupportedGenerationInput, id)
+		}
 		meso.WithPointGeom(shape[0])(upstream)
 		meso.WithPointEuclideanGeom(projected[0])(upstream)
 		meso.WithPointGeom(shape[len(shape)-1])(downstream)
